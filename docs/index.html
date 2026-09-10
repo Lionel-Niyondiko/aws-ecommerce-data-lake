@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-commerce Data Lake on AWS · Technical case study</title>
+<meta name="description" content="A reproducible data engineering lab: medallion architecture on S3, Glue and Athena, provisioned with Terraform, verified by tests, destroyed on demand.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#111110">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="E-commerce Data Lake on AWS">
+<meta property="og:description" content="A reproducible data engineering lab. 7,956 raw rows to a star schema, with 5.00% of revenue riding on how orphan keys are handled.">
+<meta property="og:image" content="architecture.svg">
+
+<!-- Theme and language are resolved BEFORE the first paint, from the same
+     storage keys app.js uses. Kept inline, tiny and synchronous on purpose:
+     an external file would arrive too late to prevent a flash of the wrong
+     theme. It resolves initial state only; all interactive logic stays in
+     app.js. -->
+<script>
+(function () {
+  var d = document.documentElement;
+  try {
+    var storedTheme = localStorage.getItem("ecommerce-datalake-theme");
+    var sysDark = window.matchMedia &&
+                  window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var theme = storedTheme || (sysDark ? "dark" : "light");
+    d.setAttribute("data-theme", theme);
+    d.style.colorScheme = theme;
+
+    var storedLang = localStorage.getItem("ecommerce-datalake-language");
+    if (storedLang === "fr" || storedLang === "en") {
+      d.setAttribute("lang", storedLang);
+    } else {
+      var tags = (navigator.languages || [navigator.language || "en"]);
+      var lang = "en";
+      for (var i = 0; i < tags.length; i++) {
+        var base = String(tags[i]).toLowerCase().split("-")[0];
+        if (base === "fr" || base === "en") { lang = base; break; }
+      }
+      d.setAttribute("lang", lang);
+    }
+  } catch (e) {
+    d.setAttribute("data-theme", "light");   /* private mode: light default */
+  }
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111110'/%3E%3Crect x='6' y='7' width='20' height='5' fill='%23FBF7F1'/%3E%3Crect x='6' y='14' width='20' height='5' fill='%238A8780'/%3E%3Crect x='6' y='21' width='20' height='5' fill='%23EE4B23'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- ==========================================================================
+     This file is the structural shell only. Every sentence, figure and label
+     the reader sees is authored in steps.js and injected by app.js, so the
+     content cannot desynchronise from the navigation. Sections carry their
+     landmarks and headings here so the document outline is correct even
+     before JavaScript runs.
+     ========================================================================== -->
+
+<a class="skip" id="skip-link" href="#walkthrough">Skip to the walkthrough</a>
+
+<header class="site-head">
+  <div class="site-head-in">
+    <a class="wordmark" id="wordmark" href="#top"></a>
+    <nav class="site-nav" id="site-nav" aria-label="Sections"></nav>
+
+    <!-- Two controls, drawn in the same language as the rest of the header:
+         1px rules, monospace, uppercase, no radius, no shadow. -->
+    <div class="head-tools">
+      <div class="segmented" role="group" id="lang-switch"></div>
+      <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false">
+        <svg viewBox="0 0 24 24" class="i-sun" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.6v2.1M12 19.3v2.1M4.3 4.3l1.5 1.5M18.2 18.2l1.5 1.5M2.6 12h2.1M19.3 12h2.1M4.3 19.7l1.5-1.5M18.2 5.8l1.5-1.5"/>
+        </svg>
+        <svg viewBox="0 0 24 24" class="i-moon" aria-hidden="true">
+          <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z"/>
+        </svg>
+        <span id="theme-toggle-text"></span>
+      </button>
+      <a class="head-cta arrow" id="head-cta" href="#" rel="noopener"></a>
+    </div>
+  </div>
+</header>
+
+<main class="sheet" id="top">
+
+  <!-- 00 · COVER ------------------------------------------------------- -->
+  <section class="band cover" aria-labelledby="cover-title">
+    <div class="cover-main">
+      <p class="cover-eyebrow" id="cover-eyebrow"></p>
+      <h1 id="cover-title"></h1>
+      <p class="cover-tagline" id="cover-tagline"></p>
+      <p class="cover-lede" id="cover-lede"></p>
+      <div class="cover-zones" id="cover-zones"></div>
+      <div class="cover-explain" id="cover-explain"></div>
+      <ul class="stack-line" id="cover-stack" aria-label="Technology stack"></ul>
+      <div class="cover-actions" id="cover-actions"></div>
+    </div>
+    <div class="spec">
+      <div class="spec-head">
+        <span class="mono" id="spec-title"></span>
+        <span class="mono" id="spec-ref"></span>
+      </div>
+      <dl id="spec-list"></dl>
+    </div>
+  </section>
+
+  <!-- 01 · THE PROBLEM ------------------------------------------------- -->
+  <section class="band" id="challenge" aria-labelledby="challenge-h">
+    <div class="band-head">
+      <span class="band-n">01</span>
+      <div>
+        <h2 id="challenge-h"><span id="challenge-title"></span></h2>
+      </div>
+    </div>
+    <div class="challenge-grid">
+      <p class="statement" id="challenge-question"></p>
+      <div class="challenge-body" id="challenge-body"></div>
+    </div>
+
+    <!-- The illustration is pinned to the source so it renders before the
+         module runs; app.js only supplies the localised alt and caption. -->
+    <figure class="flow-plate">
+      <div class="flow-plate-body">
+        <img id="flow-figure" src="data-pipeline.webp" width="1400" height="933"
+             alt="" loading="lazy" decoding="async">
+      </div>
+      <figcaption class="flow-plate-cap" id="flow-caption"></figcaption>
+    </figure>
+  </section>
+
+  <!-- 02 · TWO VIEWS --------------------------------------------------- -->
+  <section class="band" id="views" aria-labelledby="views-h">
+    <div class="band-head">
+      <span class="band-n">02</span>
+      <div>
+        <h2 id="views-h"><span id="views-title"></span></h2>
+        <p class="band-note" id="views-note"></p>
+      </div>
+    </div>
+    <div class="views" id="views-grid"></div>
+    <p class="views-explanation" id="views-explanation"></p>
+  </section>
+
+  <!-- 03 · FIGURES ----------------------------------------------------- -->
+  <section class="band" id="numbers" aria-labelledby="numbers-h">
+    <div class="band-head">
+      <span class="band-n">03</span>
+      <div>
+        <h2 id="numbers-h"><span id="numbers-title"></span></h2>
+        <p class="band-note" id="numbers-note"></p>
+      </div>
+    </div>
+    <p class="pullquote" id="numbers-pullquote"></p>
+    <ol class="metrics" id="numbers-list"></ol>
+    <p class="views-explanation" id="numbers-closing"></p>
+  </section>
+
+  <!-- 04 · HOW IT RUNS ------------------------------------------------- -->
+  <section class="band" id="how-it-runs" aria-labelledby="how-h">
+    <div class="band-head">
+      <span class="band-n">04</span>
+      <div>
+        <h2 id="how-h"><span id="how-title"></span></h2>
+        <p class="band-note" id="how-note"></p>
+      </div>
+    </div>
+
+    <div class="layers-table" id="how-layers"></div>
+    <p class="callout" id="how-make-note"></p>
+
+    <h3 class="sub-h" id="how-chains-title"></h3>
+    <div class="chain-cards" id="how-chains"></div>
+
+    <div class="warning" id="how-warning" role="note"></div>
+
+    <h3 class="sub-h" id="how-families-title"></h3>
+    <p class="sub-note" id="how-families-note"></p>
+    <div class="families" id="how-families"></div>
+  </section>
+
+  <!-- 05 · DATA INTEGRITY ---------------------------------------------- -->
+  <section class="band integrity" id="integrity" aria-labelledby="integrity-h">
+    <div class="band-head">
+      <span class="band-n">05</span>
+      <div>
+        <h2 id="integrity-h"><span id="integrity-title"></span></h2>
+        <p class="band-note" id="integrity-kicker"></p>
+      </div>
+    </div>
+    <div class="integrity-grid">
+      <div class="integrity-figure">
+        <p class="big-pct" id="integrity-figure"></p>
+        <p class="big-pct-caption" id="integrity-caption"></p>
+        <div class="figure-pair" id="integrity-pair"></div>
+      </div>
+      <div class="integrity-body" id="integrity-body"></div>
+    </div>
+  </section>
+
+  <!-- 06 · ARCHITECTURE ------------------------------------------------ -->
+  <section class="band" id="architecture" aria-labelledby="architecture-h">
+    <div class="band-head">
+      <span class="band-n">06</span>
+      <div>
+        <h2 id="architecture-h"><span id="architecture-title"></span></h2>
+        <p class="band-note" id="architecture-note"></p>
+      </div>
+    </div>
+
+    <figure class="plate-frame">
+      <figcaption class="plate-caption-bar">
+        <span class="mono" id="plate-label"></span>
+        <span class="mono">S3 · Glue · Athena · Terraform</span>
+      </figcaption>
+      <div class="plate-body" id="svg-holder">
+        <noscript><img src="architecture.svg" alt="Target architecture: three source files land in the bronze prefix of one S3 bucket, are transformed by Athena CTAS into silver then gold, and answer six business questions. Glue Data Catalog and Athena serve the whole bucket, and Terraform provisions all of it."></noscript>
+      </div>
+      <p class="plate-desc" id="svg-caption"></p>
+    </figure>
+
+    <ul class="annotations zones" id="zones"></ul>
+    <p class="views-explanation" id="architecture-closing"></p>
+  </section>
+
+  <!-- 07 · MEDALLION --------------------------------------------------- -->
+  <section class="band" id="medallion" aria-labelledby="medallion-h">
+    <div class="band-head">
+      <span class="band-n">07</span>
+      <div>
+        <h2 id="medallion-h"><span id="medallion-title"></span></h2>
+        <p class="band-note" id="medallion-note"></p>
+      </div>
+    </div>
+    <ol class="layers" id="layers"></ol>
+  </section>
+
+  <!-- 08 · WALKTHROUGH ------------------------------------------------- -->
+  <section class="band" id="walkthrough" aria-labelledby="walkthrough-h">
+    <div class="band-head">
+      <span class="band-n">08</span>
+      <div>
+        <h2 id="walkthrough-h"><span id="walkthrough-title"></span></h2>
+        <p class="band-note" id="walkthrough-note"></p>
+      </div>
+    </div>
+
+    <div class="quickstart" id="quickstart"></div>
+
+    <div class="zone-rail" id="stage-rail" aria-label="Stages of the walkthrough"></div>
+
+    <div class="walk">
+      <nav class="walk-nav" id="walk-nav" aria-label="Walkthrough steps">
+        <div class="walk-nav-in">
+          <span class="mono lbl" id="steps-label"></span>
+          <ol id="step-list"></ol>
+          <p class="walk-hint" id="walk-hint"></p>
+        </div>
+      </nav>
+
+      <article class="walk-panel" id="step-panel" tabindex="-1" aria-live="polite">
+        <!-- rendered by app.js -->
+      </article>
+    </div>
+
+    <div class="pager">
+      <button id="prev" type="button"></button>
+      <span class="pager-label" id="pager-label"></span>
+      <button id="next" type="button"></button>
+    </div>
+  </section>
+
+  <!-- 09 · DECISIONS --------------------------------------------------- -->
+  <section class="band" id="decisions" aria-labelledby="decisions-h">
+    <div class="band-head">
+      <span class="band-n">09</span>
+      <div>
+        <h2 id="decisions-h"><span id="decisions-title"></span></h2>
+        <p class="band-note" id="decisions-note"></p>
+      </div>
+    </div>
+    <p class="thesis" id="decisions-thesis"></p>
+    <p class="callout" id="decisions-principle"></p>
+    <div id="decision-rows"></div>
+  </section>
+
+  <!-- 10 · REPRODUCIBILITY --------------------------------------------- -->
+  <section class="band" id="reproducibility" aria-labelledby="repro-h">
+    <div class="band-head">
+      <span class="band-n">10</span>
+      <div>
+        <h2 id="repro-h"><span id="repro-title"></span></h2>
+        <p class="band-note" id="repro-thesis"></p>
+      </div>
+    </div>
+    <h3 class="sub-h" id="repro-components-title"></h3>
+    <div class="ci-table" id="repro-components"></div>
+
+    <h3 class="sub-h" id="repro-claims-title"></h3>
+    <p class="sub-note" id="repro-claims-lead"></p>
+    <ul class="guarantees" id="repro-claims"></ul>
+
+    <div class="ci-block">
+      <h3 class="sub-h" id="repro-ci-title"></h3>
+      <div class="ci-prose" id="repro-ci"></div>
+
+      <h3 class="sub-h" id="repro-trace-title"></h3>
+      <div class="ci-prose" id="repro-trace"></div>
+    </div>
+  </section>
+
+  <!-- 11 · IN SUMMARY --------------------------------------------------- -->
+  <section class="band" id="summary" aria-labelledby="summary-h">
+    <div class="band-head">
+      <span class="band-n">11</span>
+      <div>
+        <h2 id="summary-h"><span id="summary-title"></span></h2>
+      </div>
+    </div>
+    <div class="challenge-grid">
+      <p class="statement" id="summary-thesis"></p>
+      <div class="challenge-body">
+        <div id="summary-body"></div>
+        <ul class="stack-line" id="summary-stack" aria-label="Technology stack"></ul>
+        <p class="sub-note" id="summary-stack-note"></p>
+      </div>
+    </div>
+    <p class="views-explanation" id="summary-closing"></p>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="site-foot-in">
+    <p class="foot-claim" id="foot-claim"></p>
+    <div class="foot-grid">
+      <div class="foot-col">
+        <span class="mono lbl" id="foot-project-label"></span>
+        <ul id="foot-links"></ul>
+      </div>
+      <div class="foot-col">
+        <span class="mono lbl" id="foot-stack-label"></span>
+        <p class="foot-stack" id="foot-stack"></p>
+      </div>
+      <div class="foot-col">
+        <span class="mono lbl" id="foot-method-label"></span>
+        <p id="foot-note"></p>
+      </div>
+    </div>
+    <div class="colophon" id="colophon"></div>
+  </div>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

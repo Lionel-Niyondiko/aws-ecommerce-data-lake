@@ -1,0 +1,200 @@
+# ===========================================================================
+# pages.yml — publishes docs/ to GitHub Pages.
+# ===========================================================================
+# No build step. docs/ is six static files: index.html, style.css, app.js,
+# steps.js, architecture.svg, data-pipeline.webp. What is committed is served,
+# which means the page cannot break because a toolchain moved on.
+#
+# Enable once: Settings > Pages > Source = GitHub Actions.
+# ===========================================================================
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # A missing file here fails silently in the browser, so check before
+      # publishing rather than after.
+      - name: check the page is complete
+        run: |
+          for f in index.html style.css app.js steps.js architecture.svg data-pipeline.webp; do
+            test -f "docs/$f" || { echo "::error::docs/$f is missing"; exit 1; }
+          done
+
+          # --check reads the extension to decide module vs script, and .js is
+          # ambiguous on older Node. Copying to .mjs removes the ambiguity.
+          for f in steps app; do
+            cp "docs/$f.js" "/tmp/$f.mjs"
+            node --check "/tmp/$f.mjs"
+          done
+
+          # steps.js is the only content source, so a typo in a block type or a
+          # missing export would silently drop content from the published page.
+          # The guards below also re-read the Makefile and run_pipeline.sh, so
+          # the page cannot claim a command that does not exist, or claim that
+          # `make pipeline` runs a stage it does not run.
+          node --input-type=module -e '
+            const m = await import("/tmp/steps.mjs");
+            const fs = await import("node:fs");
+            let bad = 0;
+            const fail = (msg) => { console.error(`::error::${msg}`); bad++; };
+
+            const required = ["languages","ui","sections","meta","views","numbers","challenge",
+                              "howItRuns","integrity","architecture","medallion","stages",
+                              "quickstart","steps","decisions","reproducibility","summary"];
+            for (const k of required)
+              if (!m[k]) fail(`steps.js is missing the "${k}" export`);
+
+            const known = ["prose","note","code","decision","pitfall","check","chain","invariant"];
+            const stages = new Set((m.stages || []).map(x => x.id));
+            const PARTS = ["objective","why","whatHappens","check","whyItMatters","keyIdea"];
+
+            for (const s of m.steps || []) {
+              if (!/^[0-9]{2}$/.test(s.n || "")) fail(`step "${s.id}" has no two-digit number`);
+              if (!stages.has(s.stage)) fail(`step "${s.id}" has no matching stage`);
+              for (const f of PARTS)
+                if (!s[f]) fail(`step "${s.id}" is missing "${f}"`);
+              if (s.run === undefined)
+                fail(`step "${s.id}" must set run, use null when it has no command`);
+              if (s.run && !s.run.cmd) fail(`step "${s.id}" has a run block with no command`);
+              if (!s.check || !Array.isArray(s.check.rows) || !s.check.rows.length)
+                fail(`step "${s.id}" has an empty check table`);
+              for (const b of s.blocks || [])
+                if (!known.includes(b.type))
+                  fail(`unknown block type "${b.type}" in step "${s.id}"`);
+            }
+
+            const ids = (m.steps || []).map(s => s.id);
+            if (new Set(ids).size !== ids.length) fail("duplicate step id");
+
+            // What `make pipeline` really runs, read from the shell script.
+            const sh = fs.readFileSync("scripts/run_pipeline.sh", "utf8");
+            const cmdAll = sh.slice(sh.indexOf("cmd_all()"),
+                                    sh.indexOf("}", sh.indexOf("cmd_all()")));
+            for (const c of ["ingest","catalog","silver","gold"])
+              if (!cmdAll.includes(`cmd_${c}`))
+                fail(`run_pipeline.sh cmd_all no longer runs ${c}`);
+            if (/cmd_quality|cmd_analytics/.test(cmdAll))
+              fail("cmd_all now runs quality or analytics: the page says it does not");
+            if ((m.howItRuns.chains || []).length !== 4)
+              fail(`howItRuns.chains has ${m.howItRuns.chains.length} cards, the grid is built for 4`);
+
+            const marked = (m.steps || []).filter(s => s.partOfPipeline);
+            if (marked.length !== 4)
+              fail(`${marked.length} steps are marked partOfPipeline, expected 4`);
+
+            // Every command shown on the page must really exist.
+            const mk = fs.readFileSync("Makefile", "utf8");
+            const targets = [...mk.matchAll(/^([a-z-]+):/gm)].map(x => x[1]);
+            const subs = [...sh.matchAll(/^\s{4}([a-z]+)\)/gm)].map(x => x[1]);
+            const seen = new Set();
+            const collect = (v) => {
+              if (v === null || typeof v !== "object") return;
+              if (Array.isArray(v)) return v.forEach(collect);
+              if (typeof v.cmd === "string")
+                v.cmd.split("\n").forEach(l => seen.add(l.trim()));
+              Object.values(v).forEach(collect);
+            };
+            collect(m.steps); collect(m.howItRuns); collect(m.quickstart);
+            for (const line of seen) {
+              const t = line.match(/^make ([a-z-]+)$/);
+              if (t && !targets.includes(t[1]))
+                fail(`the page shows "${line}" but the Makefile has no such target`);
+              const sub = line.match(/^\.\/scripts\/run_pipeline\.sh ([a-z]+)/);
+              if (sub && !subs.includes(sub[1]))
+                fail(`the page shows "${line}" but run_pipeline.sh has no such subcommand`);
+            }
+
+            /* Bilingual completeness. A localisable value is either a plain
+               string (language-neutral by design: commands, SQL, AWS service
+               names, file and table names, identifiers) or an object carrying
+               every supported language. Walking the whole tree catches the
+               half-translated case, which is invisible until a reader switches. */
+            const LANGS = m.languages.map(l => l.code);
+            let localised = 0;
+            const langWalk = (v, path) => {
+              if (v === null || typeof v !== "object") return;
+              if (Array.isArray(v)) return v.forEach((x, i) => langWalk(x, `${path}[${i}]`));
+              const keys = Object.keys(v);
+              if (keys.some(k => LANGS.includes(k))) {
+                localised++;
+                for (const l of LANGS)
+                  if (typeof v[l] !== "string" || !v[l].trim())
+                    fail(`${path} is missing or empty in "${l}"`);
+                const extra = keys.filter(k => !LANGS.includes(k));
+                if (extra.length) fail(`${path} mixes languages with ${extra.join(", ")}`);
+                return;
+              }
+              for (const k of keys) langWalk(v[k], `${path}.${k}`);
+            };
+            langWalk(m, "steps");
+
+            /* The two storage keys are shared between the pre-paint script in
+               index.html and app.js. If they drift, the theme flashes. */
+            const htmlSrc = fs.readFileSync("docs/index.html", "utf8");
+            const appSrc = fs.readFileSync("docs/app.js", "utf8");
+            for (const key of ["ecommerce-datalake-theme", "ecommerce-datalake-language"]) {
+              if (!htmlSrc.includes(key)) fail(`index.html does not set up "${key}" before first paint`);
+              if (!appSrc.includes(key)) fail(`app.js does not read "${key}"`);
+            }
+            if (htmlSrc.indexOf("<script>") > htmlSrc.indexOf("<link rel=\"stylesheet\""))
+              fail("the pre-paint script must come before the stylesheet");
+
+            // House style: no em dashes in user-facing text. Counted on parsed
+            // values, so a dash inside a source comment does not fail the build.
+            const dashWalk = (v, path) => {
+              if (typeof v === "string") {
+                if (v.includes("—")) fail(`em dash in ${path}`);
+                return;
+              }
+              if (v === null || typeof v !== "object") return;
+              if (Array.isArray(v)) return v.forEach((x, i) => dashWalk(x, `${path}[${i}]`));
+              for (const k of Object.keys(v)) dashWalk(v[k], `${path}.${k}`);
+            };
+            dashWalk(m, "steps");
+
+            // Every in-page link must point at a real section or step.
+            const html = fs.readFileSync("docs/index.html", "utf8");
+            for (const href of [...html.matchAll(/href="#([a-z-]+)"/g)].map(x => x[1]))
+              if (!html.includes(`id="${href}"`) && !m.steps.some(s => s.id === href))
+                fail(`index.html links to #${href}, which does not exist`);
+
+            if (m.meta.repo.includes("YOUR-USERNAME"))
+              console.log("::warning::meta.repo still points at the placeholder account");
+
+            if (bad) process.exit(1);
+            const blocks = m.steps.reduce((n, s) => n + (s.blocks || []).length, 0);
+            console.log(`OK - ${m.steps.length} steps, ${blocks} depth blocks, ` +
+                        `${marked.length} in make pipeline, ${localised} localised strings ` +
+                        `complete in ${LANGS.join("/")}, all commands verified.`);
+          '
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

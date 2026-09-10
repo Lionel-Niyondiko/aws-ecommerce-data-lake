@@ -1,0 +1,15 @@
+# Terraform state holds secrets in cleartext and is per-user
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform/terraform.tfvars
+*.tfplan
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+
+# Local pipeline output
+.out/
