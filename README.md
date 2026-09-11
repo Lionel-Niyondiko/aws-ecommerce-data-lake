@@ -99,10 +99,10 @@ The project uses Bash scripts and Unix-style shell commands through the `Makefil
 C:\dev\aws-ecommerce-data-lake
 ```
 
-Avoid cloning into a path containing spaces, for example:
+🚧 Avoid cloning into a path containing spaces, for example:
 
 ```text
-C:\Users\...\DATA MENTORING WILLIS\...
+C:\Users\...\DATA FOLDER 001\...
 ```
 
 Paths containing spaces can cause Bash and Make command resolution problems on Windows.
