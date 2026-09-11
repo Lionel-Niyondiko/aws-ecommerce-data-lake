@@ -1,6 +1,6 @@
 # E-commerce Data Lake on AWS
 
-A hands-on Cloud Data Engineering lab that builds a reproducible AWS data lake from raw e-commerce sources, transforms the data through a bronze → silver → gold medallion architecture, models the final layer as a star schema, and validates the resulting business metrics with automated tests.
+A hands-on Cloud Data Engineering project that builds a reproducible AWS data lake from raw e-commerce sources, transforms the data through a bronze → silver → gold medallion architecture, models the final layer as a star schema, and validates the resulting business metrics with automated tests.
 
 **Terraform · Amazon S3 · AWS Glue · Amazon Athena · SQL · Python · GitHub Actions**
 
@@ -14,7 +14,7 @@ A hands-on Cloud Data Engineering lab that builds a reproducible AWS data lake f
 
 ## What we will build
 
-Two sources that do not talk to each other, an ERP order export (CSV) and an application catalog (JSON), are reconciled into a dimensional model that a BI tool can query directly.
+Two sources that do not talk to each other, an ERP order export and an application catalog, are reconciled into a dimensional model that a BI tool can query directly.
 
 | Zone | Rows | Format |
 |---|---:|---|
@@ -61,11 +61,12 @@ After completing the prerequisites and configuring AWS authentication:
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ```
 
-Edit `terraform/terraform.tfvars` and set your alert email:
+Edit `terraform/terraform.tfvars`:
 
 ```hcl
 budget_alert_email = "you@example.com"
 aws_region         = "us-east-1"
+budget_limit_usd   = 20
 ```
 
 Verify your AWS identity before deploying:
@@ -88,7 +89,23 @@ make destroy
 
 ### Windows
 
-Use **Git Bash** with **GNU Make**. The project uses Bash scripts and Unix-style shell commands through the `Makefile`.
+Use **Git Bash** with **GNU Make** and `jq`.
+
+The project uses Bash scripts and Unix-style shell commands through the `Makefile`.
+
+**Recommended Windows path:**
+
+```text
+C:\dev\aws-ecommerce-data-lake
+```
+
+Avoid cloning into a path containing spaces, for example:
+
+```text
+C:\Users\...\DATA MENTORING WILLIS\...
+```
+
+Paths containing spaces can cause Bash and Make command resolution problems on Windows.
 
 ---
 
@@ -103,6 +120,7 @@ Use **Git Bash** with **GNU Make**. The project uses Bash scripts and Unix-style
 | Terraform | ≥ 1.5 | `terraform version` |
 | Python | ≥ 3.9 | `python --version` |
 | pytest | Current | `pytest --version` |
+| jq | Current | `jq --version` |
 
 ### AWS deployment
 
@@ -123,6 +141,25 @@ aws sts get-caller-identity
 ```
 
 The repository does not require long-lived AWS keys in GitHub for its E2E workflow. GitHub Actions uses OIDC to obtain temporary AWS credentials.
+
+---
+
+## Verify your environment
+
+Run the following before the full AWS deployment:
+
+```bash
+git --version
+make --version
+terraform version
+python --version
+pytest --version
+jq --version
+aws --version
+aws sts get-caller-identity
+```
+
+If any command fails, fix the local prerequisite before starting `make deploy`.
 
 ---
 
@@ -147,9 +184,11 @@ S3 gold + star schema
    ↓
 Six analytics queries
    ↓
-Automated assertions
+AWS assertions
    ↓
 Terraform destroy
+   ↓
+Terraform state = 0 resources
 ```
 
 More precisely:
@@ -158,8 +197,91 @@ More precisely:
 2. The pipeline ingests the source data into S3.
 3. Glue catalogs the datasets.
 4. Athena executes the SQL transformations.
-5. The test suite verifies row counts, revenue, quality invariants and the business queries.
+5. The test suite verifies row counts, revenue, quality invariants and business queries.
 6. `make destroy` removes the project resources.
+7. The Terraform state should contain no remaining managed resources.
+
+---
+
+## Full AWS run
+
+Once the prerequisites are verified:
+
+### 1. Create local Terraform variables
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+```
+
+Edit:
+
+```hcl
+budget_alert_email = "you@example.com"
+aws_region         = "us-east-1"
+budget_limit_usd   = 20
+```
+
+Never commit `terraform/terraform.tfvars`.
+
+### 2. Verify AWS authentication
+
+```bash
+aws sts get-caller-identity
+```
+
+### 3. Deploy
+
+```bash
+make deploy
+```
+
+Terraform provisions the AWS infrastructure.
+
+### 4. Confirm SNS
+
+Check your email and confirm the SNS subscription created by the deployment.
+
+### 5. Run the pipeline
+
+```bash
+make pipeline
+```
+
+This runs:
+
+```text
+ingest → catalog → silver → gold
+```
+
+### 6. Run the analytics
+
+```bash
+make analytics
+```
+
+This executes the six business questions.
+
+### 7. Run the AWS assertions
+
+```bash
+make test-aws
+```
+
+The AWS suite verifies the deployed tables and the expected business invariants.
+
+### 8. Destroy the project
+
+```bash
+make destroy
+```
+
+Then verify that Terraform has no managed resources left:
+
+```bash
+terraform -chdir=terraform state list
+```
+
+A successful cleanup returns no resources.
 
 ---
 
@@ -208,7 +330,7 @@ make docs       Serve the guided walkthrough at localhost:8000
 
 ## Cost and cleanup
 
-A normal full project run is designed to cost only a few cents at this scale, but AWS charges depend on your account, region and usage. Treat the published figure as an estimate, not a guarantee.
+A normal full lab run is designed to cost only a few cents at this scale, but AWS charges depend on your account, region and usage. Treat the published figure as an estimate, not a guarantee.
 
 The safest habit is:
 
@@ -252,9 +374,9 @@ Knowing when not to add a tool is part of the architecture exercise.
 
 ### E2E
 
-`e2e.yml` is the full proof path. It uses GitHub OIDC instead of long-lived AWS access keys, deploys the lab, runs the pipeline and analytics queries, executes the AWS assertions, uploads evidence, and destroys the infrastructure even when an earlier step fails.
+`e2e.yml` is the full proof path. It uses GitHub OIDC instead of long-lived AWS access keys, deploys the project, runs the pipeline and analytics queries, executes the AWS assertions, uploads evidence, and destroys the infrastructure even when an earlier step fails.
 
-The E2E workflow is optional for local development. You only need the one-time OIDC setup if you want GitHub Actions to deploy the lab into your AWS account.
+The E2E workflow is optional for local development. You only need the one-time OIDC setup if you want GitHub Actions to deploy the project into your AWS account.
 
 ---
 
@@ -267,7 +389,7 @@ It is **not required** to:
 - clone the repository
 - run the local tests
 - validate Terraform locally
-- use the project without GitHub Actions deployment
+- run the full project manually from your own AWS CLI session
 
 The setup consists of:
 
@@ -283,30 +405,6 @@ Terraform
 
 No long-lived AWS access keys are stored in the repository.
 
-### Important OIDC note
-
-GitHub changed the default OIDC subject format for repositories created after **July 15, 2026**. New repositories use immutable owner and repository IDs in the `sub` claim.
-
-Before creating the AWS trust policy, check the current GitHub documentation for the OIDC subject format used by your repository:
-
-https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws
-
-For this repository, keep the OIDC bootstrap separate from the disposable infrastructure in `terraform/`. The bootstrap role has a different lifecycle because it is needed to start the E2E workflow.
-
-After creating the role, add its ARN as the repository variable:
-
-```text
-Settings → Secrets and variables → Actions → Variables
-
-AWS_ROLE_ARN
-AWS_REGION
-BUDGET_ALERT_EMAIL
-```
-
-The E2E workflow already consumes these variables.
-
-Because this is a disposable lab, the example deliberately keeps the bootstrap IAM permissions broader than a production deployment would. In a real AWS account, scope the trust policy and permissions to the exact repository and resources required by the deployment.
-
 ---
 
 ## Expected results
@@ -321,17 +419,21 @@ make validate
 Success! The configuration is valid.
 ```
 
-A successful AWS E2E run should complete all of these stages:
+A successful full AWS run should complete:
 
 ```text
-Deploy                 ✅
-Pipeline               ✅
-Analytics              ✅
-AWS assertions         ✅
-Evidence collection    ✅
-Destroy                ✅
-No resources left      ✅
+Terraform apply          ✅
+S3 ingestion             ✅
+Glue catalog             ✅
+Silver transformations   ✅
+Gold transformations     ✅
+Analytics                ✅
+AWS assertions           ✅
+Terraform destroy        ✅
+Terraform state empty    ✅
 ```
+
+A complete run should create the expected AWS resources, pass the AWS assertions, then remove all Terraform-managed resources.
 
 The business figures published above are asserted by the test suite. If they change unexpectedly, CI or E2E should expose the discrepancy instead of allowing the documentation to drift silently.
 
@@ -342,6 +444,26 @@ The business figures published above are asserted by the test suite. If they cha
 ### `make: command not found`
 
 On Windows, use Git Bash and install GNU Make. Then restart VS Code so the updated PATH is loaded.
+
+### `jq not found`
+
+Install `jq`, then restart Git Bash or VS Code.
+
+Verify:
+
+```bash
+jq --version
+```
+
+### `bash: C:\Users\...\...: No such file or directory`
+
+On Windows, move the repository to a path without spaces, for example:
+
+```text
+C:\dev\aws-ecommerce-data-lake
+```
+
+Then reopen the project in VS Code and Git Bash.
 
 ### `Unable to locate credentials`
 
@@ -361,6 +483,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
 Never commit `terraform/terraform.tfvars`. It is intentionally ignored by Git.
 
+
 ### AWS E2E cannot assume the role
 
 Check that:
@@ -377,6 +500,20 @@ Check that:
 Every important number in this README is asserted by `tests/test_pipeline.py` and re-verified by the E2E workflow.
 
 The source data is versioned intentionally, the Terraform provider lock file is committed, and the AWS infrastructure is disposable.
+
+The project has been validated through the complete local-to-AWS lifecycle:
+
+```text
+clone
+→ offline validation
+→ Terraform apply
+→ S3 ingestion
+→ Glue catalog
+→ Athena transformations
+→ AWS assertions
+→ Terraform destroy
+→ empty Terraform state
+```
 
 The project is designed so that a reviewer can start with zero-cost local validation and move to a complete AWS run only when they want to evaluate the cloud implementation.
 
