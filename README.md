@@ -1,9 +1,10 @@
 # E-commerce Data Lake on AWS
 
-A hands-on data engineering lab. Build a medallion data lake (bronze → silver → gold),
-model it as a star schema, answer six business questions in SQL, then destroy everything.
+A hands-on Cloud Data Engineering lab that builds a reproducible AWS data lake from raw e-commerce sources, transforms the data through a bronze → silver → gold medallion architecture, models the final layer as a star schema, and validates the resulting business metrics with automated tests.
 
-**Everything is provisioned with Terraform. No manual console clicks.**
+**Terraform · Amazon S3 · AWS Glue · Amazon Athena · SQL · Python · GitHub Actions**
+
+[![CI](https://github.com/Lionel-Niyondiko/aws-ecommerce-data-lake/actions/workflows/ci.yml/badge.svg)](https://github.com/Lionel-Niyondiko/aws-ecommerce-data-lake/actions/workflows/ci.yml)
 
 📘 **[Follow the guided walkthrough →](https://lionel-niyondiko.github.io/aws-ecommerce-data-lake/)**
 
@@ -13,191 +14,373 @@ model it as a star schema, answer six business questions in SQL, then destroy ev
 
 ## What we will build
 
-Two sources that don't talk to each other - an ERP order export and an application
-catalog - are reconciled into a dimensional model a BI tool can query directly.
+Two sources that do not talk to each other, an ERP order export (CSV) and an application catalog (JSON), are reconciled into a dimensional model that a BI tool can query directly.
 
 | Zone | Rows | Format |
 |---|---:|---|
-| `bronze/` - raw, immutable, faithful to source | 7,956 | CSV + NDJSON |
-| `silver/` - cleaned, typed, deduplicated | 7,547 | Parquet Snappy, 4 partitions |
-| `gold/` - star schema | 7,547 facts + 354 dimension rows | Parquet |
+| `bronze/` | 7,956 | CSV + NDJSON |
+| `silver/` | 7,547 | Parquet Snappy, 4 partitions |
+| `gold/` | 7,547 facts + 354 dimension rows | Parquet |
 
-Net revenue: **$9,284,872.42**. Of that, **5.00% ($464,547.61)** sits on rows whose
-product or customer no longer exists in the catalog - a naive `INNER JOIN` deletes it
-silently. Handling those orphan keys is the point of the lab.
+Net revenue: **$9,284,872.42**.
+
+Of that, **5.00% ($464,547.61)** sits on rows whose product or customer no longer exists in the catalog. A naive `INNER JOIN` deletes that value silently. Handling those orphan keys is the core data quality lesson of the project.
 
 ---
 
 ## Quick start
 
+There are two ways to use this repository.
+
+### 1. Run the project locally, no AWS required
+
+This is the recommended first step for reviewers and anyone evaluating the repository.
+
 ```bash
 git clone https://github.com/Lionel-Niyondiko/aws-ecommerce-data-lake.git
 cd aws-ecommerce-data-lake
 
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# edit: set budget_alert_email
-
-make deploy      # provision 12 AWS resources
-make pipeline    # ingest → catalog → silver → gold
-make analytics   # the six business questions
-make test-aws    # verify the numbers above against the deployed lake
-make destroy     # tear everything down
+make test
+make validate
 ```
 
-`make test` is the offline half - it runs without credentials and costs nothing,
-so it is the one CI runs on every push.
+These commands do not create AWS resources and do not require AWS credentials.
 
-`make` on its own lists every target.
+Expected result:
 
-> **Confirm the SNS subscription email** after `make deploy`. Until we click that link,
-> the CloudWatch alarm is declared but silent.
+```text
+23 passed, 15 deselected
+Terraform configuration is valid
+```
+
+### 2. Run the full AWS project
+
+After completing the prerequisites and configuring AWS authentication:
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+```
+
+Edit `terraform/terraform.tfvars` and set your alert email:
+
+```hcl
+budget_alert_email = "you@example.com"
+aws_region         = "us-east-1"
+```
+
+Verify your AWS identity before deploying:
+
+```bash
+aws sts get-caller-identity
+```
+
+Then run:
+
+```bash
+make deploy
+make pipeline
+make analytics
+make test-aws
+make destroy
+```
+
+> **Important:** confirm the SNS subscription email after `make deploy`. Until the confirmation link is clicked, the CloudWatch notification path remains inactive.
+
+### Windows
+
+Use **Git Bash** with **GNU Make**. The project uses Bash scripts and Unix-style shell commands through the `Makefile`.
 
 ---
 
 ## Prerequisites
 
+### Local development
+
 | Tool | Version | Check |
 |---|---|---|
+| Git | Current | `git --version` |
+| GNU Make | Current | `make --version` |
 | Terraform | ≥ 1.5 | `terraform version` |
-| AWS CLI | v2 | `aws sts get-caller-identity` |
-| Python | ≥ 3.9 + `pytest` | `pytest --version` |
+| Python | ≥ 3.9 | `python --version` |
+| pytest | Current | `pytest --version` |
 
-An AWS account with permissions for S3, Glue, Athena, IAM, Budgets, SNS and CloudWatch.
-Billing data access must be enabled for AWS Budgets to work.
+### AWS deployment
 
-**Cost:** under **$0.10** for a full run. S3 holds 600 KB, Athena bills $5 per TB scanned,
-Glue and Budgets are free at this volume. Always run `make destroy` when you are done -
-`force_destroy = true` is set from the first apply so it never fails on `BucketNotEmpty`.
+| Tool / account | Requirement | Check |
+|---|---|---|
+| AWS CLI | v2 | `aws --version` |
+| AWS account | Required for the full project | AWS console access |
+| AWS identity | Permissions for the project resources | `aws sts get-caller-identity` |
+
+The deployment creates resources across S3, Glue, Athena, IAM, Budgets, SNS and CloudWatch.
+
+### AWS authentication
+
+Configure the AWS CLI using your preferred authentication method, then verify the active identity:
+
+```bash
+aws sts get-caller-identity
+```
+
+The repository does not require long-lived AWS keys in GitHub for its E2E workflow. GitHub Actions uses OIDC to obtain temporary AWS credentials.
 
 ---
 
-## Layout
+## What the deployment does
 
+The full project follows this sequence:
+
+```text
+Terraform
+   ↓
+AWS infrastructure
+   ↓
+S3 bronze
+   ↓
+Glue catalog
+   ↓
+Athena transformations
+   ↓
+S3 silver
+   ↓
+S3 gold + star schema
+   ↓
+Six analytics queries
+   ↓
+Automated assertions
+   ↓
+Terraform destroy
 ```
-terraform/   12 resources: S3 + zones, Glue database, IAM role, Budget, SNS, CloudWatch alarm
+
+More precisely:
+
+1. Terraform provisions the AWS infrastructure.
+2. The pipeline ingests the source data into S3.
+3. Glue catalogs the datasets.
+4. Athena executes the SQL transformations.
+5. The test suite verifies row counts, revenue, quality invariants and the business queries.
+6. `make destroy` removes the project resources.
+
+---
+
+## Repository layout
+
+```text
+terraform/   AWS infrastructure: S3, Glue, IAM, Budget, SNS, CloudWatch
 sql/         01_bronze → 02_quality → 03_silver → 04_gold → 05_analytics
-scripts/     run_pipeline.sh - the only script, with sub-commands
-data/        the three source files (read-only input, 600 KB, versioned on purpose)
-tests/       test_pipeline.py - runs with or without AWS
-docs/        the case study published on GitHub Pages - 5 static files, no build
+scripts/     run_pipeline.sh, the pipeline entry point
+data/        three read-only source files, intentionally versioned for reproducibility
+tests/       pytest suite, with offline and deployed-AWS tests
+docs/        static case study published on GitHub Pages
+.github/     CI, E2E and Pages workflows
+Makefile     project command interface
 ```
 
-The SQL files are numbered in execution order, and each one ends with the checks that
-prove it worked. `02_quality.sql` is deliberately separate: it predicts that silver will
-hold 7,547 rows **before** producing them. That prediction is what makes everything
-downstream verifiable.
+The SQL files are numbered in execution order. Each step ends with checks that prove it worked.
+
+`02_quality.sql` is deliberately separate because it predicts that silver will contain 7,547 rows before producing them. That prediction makes the downstream pipeline verifiable.
 
 ---
 
-## What this project deliberately does not use
+## Make targets
 
-| Not used | Why |
-|---|---|
-| **Airflow** | Six linear steps, two minutes, run once. No branching, no backfill, no cross-dependency. A `Makefile` expresses the same DAG. |
-| **dbt** | Genuinely tempting for the SQL layer, but it hides the `CTAS` statements this lab exists to teach. |
-| **Remote Terraform backend** | It would tie the project to *my* bucket. Everyone who clones needs their own state, so state stays local and git-ignored. |
+Run:
 
-Knowing when *not* to add a tool is an architecture skill I'm still sharpening. ☺️
+```bash
+make help
+```
+
+Available targets:
+
+```text
+make validate   Check Terraform formatting and syntax
+make test       Run tests that need no AWS credentials
+make deploy     Provision the AWS resources
+make pipeline   Ingest, catalog, clean and model
+make quality    Profile the raw data
+make analytics  Run the six business questions
+make test-aws   Verify the deployed lake against expected numbers
+make destroy    Tear down every AWS resource
+make docs       Serve the guided walkthrough at localhost:8000
+```
 
 ---
 
-## CI
+## Cost and cleanup
+
+A normal full project run is designed to cost only a few cents at this scale, but AWS charges depend on your account, region and usage. Treat the published figure as an estimate, not a guarantee.
+
+The safest habit is:
+
+```bash
+make destroy
+```
+
+The Terraform configuration uses `force_destroy = true` for the data lake bucket so cleanup does not fail because of remaining objects.
+
+---
+
+## Design decisions
+
+### Why no Airflow?
+
+The pipeline is short and linear. It runs in a few minutes, has no branching, no backfill requirement and no cross-dependency graph. A `Makefile` expresses the orchestration with less operational overhead.
+
+### Why no dbt?
+
+The SQL layer intentionally exposes the Athena CTAS transformations that the project is meant to teach. Adding dbt would hide part of that mechanism without adding enough value for this scope.
+
+### Why no remote Terraform backend?
+
+A remote backend would tie every clone to a shared or pre-existing state bucket. Each user should own the state for their own lab, so state stays local and is ignored by Git.
+
+Knowing when not to add a tool is part of the architecture exercise.
+
+---
+
+## CI and end-to-end testing
 
 | Workflow | AWS | Trigger | What it proves |
 |---|---|---|---|
-| `ci.yml` | no | every push and PR | Terraform is valid, shell is clean, the source-data numbers still hold |
-| `e2e.yml` | yes | manual + Mondays 06:00 UTC | the lab is still reproducible end to end, then destroys itself |
-| `pages.yml` | no | push to `main` touching `docs/` | publishes the walkthrough |
+| `ci.yml` | No | Every push and PR | Terraform validation, shell checks and offline tests |
+| `e2e.yml` | Yes | Manual + Monday schedule | Real AWS deployment, pipeline execution, AWS assertions and clean teardown |
+| `pages.yml` | No | Pushes affecting `docs/` | Publishes the walkthrough |
 
-`e2e.yml` authenticates through **GitHub OIDC** - no long-lived AWS keys are stored
-anywhere in this repository.
+### CI
 
-<details>
-<summary><strong>One-time OIDC setup</strong> (apply once, then never again)</summary>
+`ci.yml` is the zero-cost validation path. It runs on every push and pull request without AWS credentials.
 
-Save as `oidc.tf` in a scratch directory, set your GitHub org and repo, and apply it
-once. It is intentionally kept out of `terraform/` because it has the opposite lifecycle:
-permanent, while everything in `terraform/` is disposable.
+### E2E
 
-```hcl
-variable "github_repo" {
-  description = "owner/repository"
-  type        = string
-}
+`e2e.yml` is the full proof path. It uses GitHub OIDC instead of long-lived AWS access keys, deploys the lab, runs the pipeline and analytics queries, executes the AWS assertions, uploads evidence, and destroys the infrastructure even when an earlier step fails.
 
-data "aws_caller_identity" "current" {}
+The E2E workflow is optional for local development. You only need the one-time OIDC setup if you want GitHub Actions to deploy the lab into your AWS account.
 
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
-}
+---
 
-data "aws_iam_policy_document" "github_assume" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+## One-time GitHub OIDC setup
 
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
-    }
+This section is only required for the **GitHub Actions E2E workflow**.
 
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
+It is **not required** to:
 
-    condition {
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:*"]
-    }
-  }
-}
+- clone the repository
+- run the local tests
+- validate Terraform locally
+- use the project without GitHub Actions deployment
 
-resource "aws_iam_role" "github_actions" {
-  name               = "lab-datalake-github-actions"
-  assume_role_policy = data.aws_iam_policy_document.github_assume.json
-}
+The setup consists of:
 
-resource "aws_iam_role_policy_attachment" "github_actions" {
-  role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
-}
-
-resource "aws_iam_role_policy" "github_actions_iam" {
-  name = "manage-lab-iam"
-  role = aws_iam_role.github_actions.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["iam:*Role*", "iam:*Policy*", "budgets:*"]
-      Resource = "*"
-    }]
-  })
-}
-
-output "role_arn" { value = aws_iam_role.github_actions.arn }
+```text
+GitHub Actions
+      ↓ OIDC
+AWS IAM role
+      ↓
+Temporary AWS credentials
+      ↓
+Terraform
 ```
 
-Then add the resulting ARN as the repository variable `AWS_ROLE_ARN`
-(Settings → Secrets and variables → Actions → Variables).
+No long-lived AWS access keys are stored in the repository.
 
-`PowerUserAccess` plus a narrow IAM/Budgets grant is broad on purpose: this role only
-ever exists in a lab account. In any real account, we would scope it down.
+### Important OIDC note
 
-</details>
+GitHub changed the default OIDC subject format for repositories created after **July 15, 2026**. New repositories use immutable owner and repository IDs in the `sub` claim.
+
+Before creating the AWS trust policy, check the current GitHub documentation for the OIDC subject format used by your repository:
+
+https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws
+
+For this repository, keep the OIDC bootstrap separate from the disposable infrastructure in `terraform/`. The bootstrap role has a different lifecycle because it is needed to start the E2E workflow.
+
+After creating the role, add its ARN as the repository variable:
+
+```text
+Settings → Secrets and variables → Actions → Variables
+
+AWS_ROLE_ARN
+AWS_REGION
+BUDGET_ALERT_EMAIL
+```
+
+The E2E workflow already consumes these variables.
+
+Because this is a disposable lab, the example deliberately keeps the bootstrap IAM permissions broader than a production deployment would. In a real AWS account, scope the trust policy and permissions to the exact repository and resources required by the deployment.
+
+---
+
+## Expected results
+
+A successful local validation looks like:
+
+```text
+make test
+23 passed, 15 deselected
+
+make validate
+Success! The configuration is valid.
+```
+
+A successful AWS E2E run should complete all of these stages:
+
+```text
+Deploy                 ✅
+Pipeline               ✅
+Analytics              ✅
+AWS assertions         ✅
+Evidence collection    ✅
+Destroy                ✅
+No resources left      ✅
+```
+
+The business figures published above are asserted by the test suite. If they change unexpectedly, CI or E2E should expose the discrepancy instead of allowing the documentation to drift silently.
+
+---
+
+## Troubleshooting
+
+### `make: command not found`
+
+On Windows, use Git Bash and install GNU Make. Then restart VS Code so the updated PATH is loaded.
+
+### `Unable to locate credentials`
+
+Configure AWS authentication and verify:
+
+```bash
+aws sts get-caller-identity
+```
+
+### `terraform.tfvars not found`
+
+Create it from the example file:
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+```
+
+Never commit `terraform/terraform.tfvars`. It is intentionally ignored by Git.
+
+### AWS E2E cannot assume the role
+
+Check that:
+
+1. GitHub OIDC is configured in AWS.
+2. The IAM trust policy matches the OIDC subject format used by this repository.
+3. The repository variable `AWS_ROLE_ARN` is correct.
+4. The E2E workflow has `id-token: write` permission.
 
 ---
 
 ## Reproducibility
 
-Every number in this README is asserted by `tests/test_pipeline.py` and re-verified
-weekly by `e2e.yml`. If a figure here is ever wrong, CI goes red before we find out
-the hard way.
+Every important number in this README is asserted by `tests/test_pipeline.py` and re-verified by the E2E workflow.
+
+The source data is versioned intentionally, the Terraform provider lock file is committed, and the AWS infrastructure is disposable.
+
+The project is designed so that a reviewer can start with zero-cost local validation and move to a complete AWS run only when they want to evaluate the cloud implementation.
+
+---
 
 ## License
 
