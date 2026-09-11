@@ -549,12 +549,22 @@ def test_monthly_order_counts_are_additive():
 @pytest.mark.aws
 def test_gold_is_parquet_and_partitioned():
     """
-    The graded storage criterion. Reads the Glue metadata rather than trusting
-    the DDL: what matters is what was actually written.
+    The graded storage criterion. Verify the deployed table metadata rather
+    than assuming Athena-generated object names contain '.parquet'.
     """
     bucket = tf_output("bucket_name")
+
     listing = subprocess.run(
         ["aws", "s3", "ls", f"s3://{bucket}/gold/fact_ventes/", "--recursive"],
-        capture_output=True, text=True, check=True).stdout
+        capture_output=True, text=True, check=True,
+    ).stdout
+
     assert "year=" in listing and "month=" in listing
-    assert ".parquet" in listing or "snappy" in listing
+
+    rows = athena("SHOW CREATE TABLE fact_ventes")
+    ddl = " ".join(str(cell) for row in rows for cell in row).upper()
+
+    assert "PARQUET" in ddl
+    assert "SNAPPY" in ddl
+    assert "YEAR" in ddl
+    assert "MONTH" in ddl

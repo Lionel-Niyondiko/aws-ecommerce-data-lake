@@ -43,7 +43,7 @@ WITH bounds AS (
     FROM orders_clean
 ),
 calendar AS (
-    SELECT day AS full_date
+    SELECT CAST(day AS date) AS full_date
     FROM bounds
     CROSS JOIN UNNEST(sequence(first_day, last_day, INTERVAL '1' DAY)) AS t(day)
 )
