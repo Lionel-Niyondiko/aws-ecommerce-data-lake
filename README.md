@@ -11,7 +11,7 @@ model it as a star schema, answer six business questions in SQL, then destroy ev
 
 ---
 
-## What you build
+## What we will build
 
 Two sources that don't talk to each other - an ERP order export and an application
 catalog - are reconciled into a dimensional model a BI tool can query directly.
@@ -49,7 +49,7 @@ so it is the one CI runs on every push.
 
 `make` on its own lists every target.
 
-> **Confirm the SNS subscription email** after `make deploy`. Until you click that link,
+> **Confirm the SNS subscription email** after `make deploy`. Until we click that link,
 > the CloudWatch alarm is declared but silent.
 
 ---
@@ -93,14 +93,11 @@ downstream verifiable.
 
 | Not used | Why |
 |---|---|
-| **Airflow** | Six linear steps, two minutes, run once. No branching, no backfill, no cross-dependency. Managed MWAA starts around $350/month - seven thousand times the cost of the lab itself. A `Makefile` expresses the same DAG. |
+| **Airflow** | Six linear steps, two minutes, run once. No branching, no backfill, no cross-dependency. A `Makefile` expresses the same DAG. |
 | **dbt** | Genuinely tempting for the SQL layer, but it hides the `CTAS` statements this lab exists to teach. |
 | **Remote Terraform backend** | It would tie the project to *my* bucket. Everyone who clones needs their own state, so state stays local and git-ignored. |
-| **Step Functions** | Cheaper than Airflow, but adds ASL JSON, another IAM role and a state machine to debug - for a pipeline that never branches. |
-| **Kubernetes** | Nothing runs continuously. There is nothing to orchestrate. |
 
-Knowing when *not* to add a tool is an architecture skill. This table is the shortest
-section of the repository and probably the most useful one.
+Knowing when *not* to add a tool is an architecture skill I'm still sharpening. ☺️
 
 ---
 
@@ -190,7 +187,7 @@ Then add the resulting ARN as the repository variable `AWS_ROLE_ARN`
 (Settings → Secrets and variables → Actions → Variables).
 
 `PowerUserAccess` plus a narrow IAM/Budgets grant is broad on purpose: this role only
-ever exists in a lab account. In any real account, scope it down.
+ever exists in a lab account. In any real account, we would scope it down.
 
 </details>
 
@@ -199,7 +196,7 @@ ever exists in a lab account. In any real account, scope it down.
 ## Reproducibility
 
 Every number in this README is asserted by `tests/test_pipeline.py` and re-verified
-weekly by `e2e.yml`. If a figure here is ever wrong, CI goes red before you find out
+weekly by `e2e.yml`. If a figure here is ever wrong, CI goes red before we find out
 the hard way.
 
 ## License
