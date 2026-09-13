@@ -270,6 +270,175 @@ def test_analytics_counts_orders_as_invoice_plus_date():
 
 
 # ===========================================================================
+# Offline — no column is dropped between bronze and gold
+# ===========================================================================
+# The audit that produced these tests found the grain, the row counts and the
+# revenue intact, and several columns simply missing from gold. Nothing was
+# wrong; information was just absent, with nothing in the file to say whether
+# that was a decision or an oversight. These tests turn that ambiguity into a
+# failure: every bronze column must land somewhere, under its own name, a
+# documented rename, or a documented flattening.
+
+
+def _strip_string_literals(text):
+    """A literal may contain a comma or the word AS. Blank them first."""
+    return re.sub(r"'[^']*'", "''", text)
+
+
+def _aliases(projection):
+    """
+    Output column names of a bare SELECT projection list.
+
+    Commas and AS are read at parenthesis depth zero only, so
+    CAST(NULL AS varchar) AS brand yields "brand" and not "varchar".
+    """
+    projection = _strip_string_literals(projection)
+
+    items, depth, current = [], 0, []
+    for char in projection:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        if char == "," and depth == 0:
+            items.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    items.append("".join(current))
+
+    names = []
+    for item in items:
+        item = " ".join(item.split())
+        if not item:
+            continue
+        depth, cut = 0, None
+        for token in re.finditer(r"[()]|\bAS\b", item, re.IGNORECASE):
+            if token.group(0) == "(":
+                depth += 1
+            elif token.group(0) == ")":
+                depth -= 1
+            elif depth == 0:
+                cut = token.end()
+        name = item if cut is None else item[cut:]
+        names.append(name.strip().strip('"').split(".")[-1].strip('"').lower())
+    return names
+
+
+def _projection(sql_code, create_marker, from_marker):
+    """The first SELECT of a CTAS, read as a list of output column names."""
+    body = sql_code[sql_code.index(create_marker):]
+    body = body[body.index(") AS"):]
+    body = body[body.index("SELECT") + len("SELECT"):body.index(from_marker)]
+    return _aliases(body)
+
+
+def _bronze_columns(table):
+    """
+    Top-level columns of a bronze external table, plus its partition column.
+
+    Struct fields are not counted: flattening them is silver's job, and the
+    ORIGINS maps below record where each one is supposed to land.
+    """
+    block = read_sql_code("01_bronze.sql")
+    block = block[block.index(f"EXISTS {table} ("):]
+    block = block[:block.index("PARTITIONED BY")]
+    columns = re.findall(r"^  (`?\w+`?)\s+\S", block, re.MULTILINE)
+    return [c.strip("`") for c in columns] + ["ingestion_date"]
+
+
+# bronze column -> the silver column(s) it becomes. Anything absent from the
+# map has to survive under its own name.
+PRODUCT_ORIGINS = {
+    "id":                   ["product_id"],
+    "price":                ["catalog_price"],
+    "discountpercentage":   ["discount_percentage"],
+    "dimensions":           ["width", "height", "depth"],
+    "tags":                 ["tags", "tag_count"],
+    "warrantyinformation":  ["warranty_information"],
+    "shippinginformation":  ["shipping_information"],
+    "availabilitystatus":   ["availability_status"],
+    "minimumorderquantity": ["minimum_order_quantity"],
+    "ingestion_date":       ["source_ingestion_date"],
+}
+# computed in silver, with no bronze column behind it
+PRODUCT_COMPUTED = {"discounted_price"}
+
+USER_ORIGINS = {
+    "id":      ["customer_id"],
+    "address": ["address_street", "city", "state", "state_code",
+                "postal_code", "country", "latitude", "longitude"],
+    "company": ["company_name", "company_department", "company_title",
+                "company_address_street", "company_address_city",
+                "company_address_state", "company_address_state_code",
+                "company_address_postal_code", "company_address_country",
+                "company_address_lat", "company_address_lng"],
+    "ingestion_date": ["source_ingestion_date"],
+}
+USER_COMPUTED = set()
+
+
+def _expected_silver(bronze_columns, origins, computed):
+    expected = set(computed)
+    for column in bronze_columns:
+        expected.update(origins.get(column, [column]))
+    return expected
+
+
+def test_products_reach_gold_with_nothing_dropped_on_the_way():
+    """
+    products_clean must account for every bronze column, and dim_produit must
+    expose all of products_clean plus is_unknown. A column added to bronze and
+    forgotten downstream fails here rather than in six months.
+    """
+    silver = _projection(read_sql_code("03_silver.sql"),
+                         "CREATE TABLE products_clean", "FROM products_raw")
+    gold = _projection(read_sql_code("04_gold.sql"),
+                       "CREATE TABLE dim_produit", "FROM products_clean")
+
+    assert set(silver) == _expected_silver(
+        _bronze_columns("products_raw"), PRODUCT_ORIGINS, PRODUCT_COMPUTED)
+    assert set(gold) == set(silver) | {"is_unknown"}
+    assert gold[-1] == "is_unknown", "the convention flag stays last"
+
+
+def test_users_reach_gold_with_nothing_dropped_on_the_way():
+    """The mirror of the test above, on the customer side."""
+    silver = _projection(read_sql_code("03_silver.sql"),
+                         "CREATE TABLE users_clean", "FROM users_raw")
+    gold = _projection(read_sql_code("04_gold.sql"),
+                       "CREATE TABLE dim_client", "FROM users_clean")
+
+    assert set(silver) == _expected_silver(
+        _bronze_columns("users_raw"), USER_ORIGINS, USER_COMPUTED)
+    assert set(gold) == set(silver) | {"customer_type"}
+    assert gold[-1] == "customer_type", "the row-type flag stays last"
+
+
+def test_convention_rows_line_up_with_the_dimension_they_extend():
+    """
+    UNION ALL is positional. A column added to the main SELECT and forgotten in
+    a convention branch does not raise: it shifts every following value by one,
+    or fails with a type error that reads like a typo. 04_gold.sql calls this
+    its number one error, so it gets an assertion rather than a comment.
+    """
+    gold = read_sql_code("04_gold.sql")
+    for create, source in (("CREATE TABLE dim_produit", "FROM products_clean"),
+                           ("CREATE TABLE dim_client",  "FROM users_clean")):
+        main = _projection(gold, create, source)
+        block = gold[gold.index(create):]
+        block = block[:block.index(";")]
+
+        branches = block.split("UNION ALL")[1:]
+        assert branches, f"{create}: no convention row"
+        for branch in branches:
+            names = _aliases(branch[branch.index("SELECT") + len("SELECT"):])
+            assert names == main, (
+                f"{create}: a convention row is out of step with the "
+                f"main SELECT ({len(names)} columns against {len(main)})")
+
+
+# ===========================================================================
 # Offline — repository shape
 # ===========================================================================
 
@@ -497,6 +666,35 @@ def test_convention_rows_carry_the_expected_volume():
     """)[0]
     assert [int(v) for v in row[:4]] == [139, 82, 155, 376]
     assert float(row[4]) == 464547.61
+
+
+@pytest.mark.aws
+def test_dim_produit_carries_the_catalog_attributes():
+    """
+    rating was clean in silver and never reached gold. Now that it does, the
+    only row allowed to be missing it is the convention row: a NULL on a real
+    product would mean the widening lost data on the way through.
+    """
+    assert int(scalar("SELECT COUNT_IF(rating IS NULL) FROM dim_produit "
+                      "WHERE product_id <> -1")) == 0
+    assert int(scalar("SELECT COUNT_IF(rating IS NULL) FROM dim_produit "
+                      "WHERE product_id = -1")) == 1
+    assert int(scalar("SELECT COUNT_IF(tags IS NULL) FROM dim_produit "
+                      "WHERE product_id <> -1")) == 0
+
+
+@pytest.mark.aws
+def test_dim_client_carries_the_customer_attributes():
+    """
+    The mirror on the customer side. age was in users_clean and stopped there;
+    the two convention rows are the only ones entitled to a NULL.
+    """
+    assert int(scalar("SELECT COUNT_IF(age IS NULL) FROM dim_client "
+                      "WHERE customer_id > 0")) == 0
+    assert int(scalar("SELECT COUNT_IF(age IS NULL) FROM dim_client "
+                      "WHERE customer_id < 0")) == 2
+    assert int(scalar("SELECT COUNT_IF(latitude IS NULL) FROM dim_client "
+                      "WHERE customer_id > 0")) == 0
 
 
 @pytest.mark.aws

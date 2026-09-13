@@ -136,6 +136,34 @@ SELECT
     sku,
     rating,
     CARDINALITY(tags)                                  AS tag_count,
+
+    -- Kept: tag_count answers "how many", tags answers "which". A count is a
+    -- summary of the list, never a substitute for it.
+    tags,
+
+    -- Kept: the only free-text field describing the product. Every search,
+    -- classification or text analysis has to start from it.
+    description,
+
+    -- Kept: the dimensions were already propagated, the mass was not. Shipping
+    -- cost per unit is unanswerable without it.
+    weight,
+
+    -- Kept: after-sales terms segment the catalog as much as category does.
+    warrantyinformation                                AS warranty_information,
+
+    -- Kept: the delivery promise is a commercial attribute, comparable across
+    -- products and quotable in a report.
+    shippinginformation                                AS shipping_information,
+
+    -- Kept: stock says how many are left, this says whether the product is
+    -- orderable at all. They disagree often enough to matter.
+    availabilitystatus                                 AS availability_status,
+
+    -- Kept: the minimum order quantity constrains any basket analysis, and
+    -- leaving it here would send the reader back to bronze to find it.
+    minimumorderquantity                               AS minimum_order_quantity,
+
     ingestion_date                                     AS source_ingestion_date
 FROM products_raw;
 
@@ -154,19 +182,64 @@ WITH (
     external_location   = 's3://${BUCKET}/silver/users_clean/'
 ) AS
 SELECT
-    id                 AS customer_id,
+    id                              AS customer_id,
     firstname,
     lastname,
     email,
+
+    -- Kept: the two contact channels. Reachability, and duplicate-account
+    -- detection, are questions the dimension has to be able to answer.
+    phone,
+    username,
+
     age,
     gender,
-    address.city       AS city,
-    address.state      AS state,
-    address.postalcode AS postal_code,
-    address.country    AS country,
-    company.name       AS company_name,
-    company.department AS company_department,
-    ingestion_date     AS source_ingestion_date
+
+    -- Kept: the street line completes an address whose city, state and postal
+    -- code were already propagated. Half an address is not an address.
+    address.address                 AS address_street,
+    address.city                    AS city,
+    address.state                   AS state,
+
+    -- Kept: the two-letter code is what joins to external geographic
+    -- reference data. The spelled-out state does not.
+    address.statecode               AS state_code,
+
+    address.postalcode              AS postal_code,
+    address.country                 AS country,
+
+    -- Kept: the only geospatial signal in the source. A distance or catchment
+    -- question is not excluded a priori, and it cannot be reconstructed later.
+    address.coordinates.lat         AS latitude,
+    address.coordinates.lng         AS longitude,
+
+    -- Kept: a segmentation axis the catalog offers for free.
+    university,
+
+    company.name                    AS company_name,
+    company.department              AS company_department,
+
+    -- Kept: seniority is what separates a decision maker from an end user in
+    -- a B2B reading of the same table.
+    company.title                   AS company_title,
+
+    -- Kept: the employer address is a second, independent geography. Billing
+    -- and delivery questions do not always resolve to the home address.
+    company.address.address         AS company_address_street,
+    company.address.city            AS company_address_city,
+    company.address.state           AS company_address_state,
+    company.address.statecode       AS company_address_state_code,
+    company.address.postalcode      AS company_address_postal_code,
+    company.address.country         AS company_address_country,
+    company.address.coordinates.lat AS company_address_lat,
+    company.address.coordinates.lng AS company_address_lng,
+
+    -- Kept: separates an admin account from a real customer, which is exactly
+    -- the kind of row an analysis has to be able to exclude. Reserved word:
+    -- backticks in DDL, double quotes in SELECT (see 01_bronze.sql).
+    "role",
+
+    ingestion_date                  AS source_ingestion_date
 FROM users_raw;
 
 

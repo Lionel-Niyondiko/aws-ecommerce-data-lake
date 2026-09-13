@@ -74,6 +74,12 @@ FROM calendar;
 --
 -- UNION ALL requires strictly identical types per column, hence the explicit
 -- CAST(NULL AS ...). This is the number one error in this block.
+--
+-- The dimension carries EVERY column of products_clean. A column that is clean
+-- in silver and absent from gold is information lost with no trace and no
+-- justification: the reader cannot tell a deliberate exclusion from an
+-- oversight. Widening costs nothing here — 131 rows — and the alternative is a
+-- dimension that quietly decides what questions may be asked of it.
 CREATE TABLE dim_produit
 WITH (
     format              = 'PARQUET',
@@ -83,6 +89,11 @@ WITH (
 SELECT product_id, title, category, brand,
        catalog_price, discounted_price, discount_percentage,
        stock, width, height, depth,
+       sku, rating, tag_count, tags,
+       description, weight,
+       warranty_information, shipping_information,
+       availability_status, minimum_order_quantity,
+       source_ingestion_date,
        false AS is_unknown
 FROM products_clean
 
@@ -99,6 +110,21 @@ SELECT -1                    AS product_id,
        CAST(NULL AS double)  AS width,
        CAST(NULL AS double)  AS height,
        CAST(NULL AS double)  AS depth,
+       CAST(NULL AS varchar) AS sku,
+       CAST(NULL AS double)  AS rating,
+       -- bigint, not integer: CARDINALITY() returns bigint, and silver stored
+       -- tag_count as whatever it returned. A cast to integer here fails the
+       -- whole CTAS on a type mismatch that reads like a typo.
+       CAST(NULL AS bigint)  AS tag_count,
+       CAST(NULL AS array(varchar)) AS tags,
+       CAST(NULL AS varchar) AS description,
+       CAST(NULL AS double)  AS weight,
+       CAST(NULL AS varchar) AS warranty_information,
+       CAST(NULL AS varchar) AS shipping_information,
+       CAST(NULL AS varchar) AS availability_status,
+       CAST(NULL AS integer) AS minimum_order_quantity,
+       -- the lineage column is a partition value, declared string upstream
+       CAST(NULL AS varchar) AS source_ingestion_date,
        true                  AS is_unknown;
 
 
@@ -113,23 +139,99 @@ SELECT -1                    AS product_id,
 --
 -- The first is a data governance issue, the second a sales process issue.
 -- Different causes, different fixes.
+--
+-- Same rule as dim_produit: the dimension carries EVERY column of users_clean.
+-- The convention rows are now written column by column with explicit aliases.
+-- UNION ALL is positional, so at eight columns the compact form was readable
+-- and at thirty it would be a shift waiting to happen. The aliases are ignored
+-- by the engine and read by the reviewer, which is the whole point.
 CREATE TABLE dim_client
 WITH (
     format              = 'PARQUET',
     parquet_compression = 'SNAPPY',
     external_location   = 's3://${BUCKET}/gold/dim_client/'
 ) AS
-SELECT customer_id, firstname, lastname, email, city, country, company_name,
+SELECT customer_id, firstname, lastname, email,
+       phone, username, age, gender,
+       address_street, city, state, state_code, postal_code, country,
+       latitude, longitude,
+       university,
+       company_name, company_department, company_title,
+       company_address_street, company_address_city, company_address_state,
+       company_address_state_code, company_address_postal_code,
+       company_address_country, company_address_lat, company_address_lng,
+       "role",
+       source_ingestion_date,
        'Known' AS customer_type
 FROM users_clean
 
 UNION ALL
-SELECT -1, 'Unknown', 'customer', CAST(NULL AS varchar), CAST(NULL AS varchar),
-       CAST(NULL AS varchar), CAST(NULL AS varchar), 'Orphan'
+
+SELECT -1                    AS customer_id,
+       'Unknown'             AS firstname,
+       'customer'            AS lastname,
+       CAST(NULL AS varchar) AS email,
+       CAST(NULL AS varchar) AS phone,
+       CAST(NULL AS varchar) AS username,
+       CAST(NULL AS integer) AS age,
+       CAST(NULL AS varchar) AS gender,
+       CAST(NULL AS varchar) AS address_street,
+       CAST(NULL AS varchar) AS city,
+       CAST(NULL AS varchar) AS state,
+       CAST(NULL AS varchar) AS state_code,
+       CAST(NULL AS varchar) AS postal_code,
+       CAST(NULL AS varchar) AS country,
+       CAST(NULL AS double)  AS latitude,
+       CAST(NULL AS double)  AS longitude,
+       CAST(NULL AS varchar) AS university,
+       CAST(NULL AS varchar) AS company_name,
+       CAST(NULL AS varchar) AS company_department,
+       CAST(NULL AS varchar) AS company_title,
+       CAST(NULL AS varchar) AS company_address_street,
+       CAST(NULL AS varchar) AS company_address_city,
+       CAST(NULL AS varchar) AS company_address_state,
+       CAST(NULL AS varchar) AS company_address_state_code,
+       CAST(NULL AS varchar) AS company_address_postal_code,
+       CAST(NULL AS varchar) AS company_address_country,
+       CAST(NULL AS double)  AS company_address_lat,
+       CAST(NULL AS double)  AS company_address_lng,
+       CAST(NULL AS varchar) AS "role",
+       CAST(NULL AS varchar) AS source_ingestion_date,
+       'Orphan'              AS customer_type
 
 UNION ALL
-SELECT -2, 'Not', 'recorded', CAST(NULL AS varchar), CAST(NULL AS varchar),
-       CAST(NULL AS varchar), CAST(NULL AS varchar), 'Not recorded';
+
+SELECT -2                    AS customer_id,
+       'Not'                 AS firstname,
+       'recorded'            AS lastname,
+       CAST(NULL AS varchar) AS email,
+       CAST(NULL AS varchar) AS phone,
+       CAST(NULL AS varchar) AS username,
+       CAST(NULL AS integer) AS age,
+       CAST(NULL AS varchar) AS gender,
+       CAST(NULL AS varchar) AS address_street,
+       CAST(NULL AS varchar) AS city,
+       CAST(NULL AS varchar) AS state,
+       CAST(NULL AS varchar) AS state_code,
+       CAST(NULL AS varchar) AS postal_code,
+       CAST(NULL AS varchar) AS country,
+       CAST(NULL AS double)  AS latitude,
+       CAST(NULL AS double)  AS longitude,
+       CAST(NULL AS varchar) AS university,
+       CAST(NULL AS varchar) AS company_name,
+       CAST(NULL AS varchar) AS company_department,
+       CAST(NULL AS varchar) AS company_title,
+       CAST(NULL AS varchar) AS company_address_street,
+       CAST(NULL AS varchar) AS company_address_city,
+       CAST(NULL AS varchar) AS company_address_state,
+       CAST(NULL AS varchar) AS company_address_state_code,
+       CAST(NULL AS varchar) AS company_address_postal_code,
+       CAST(NULL AS varchar) AS company_address_country,
+       CAST(NULL AS double)  AS company_address_lat,
+       CAST(NULL AS double)  AS company_address_lng,
+       CAST(NULL AS varchar) AS "role",
+       CAST(NULL AS varchar) AS source_ingestion_date,
+       'Not recorded'        AS customer_type;
 
 
 -- ---------------------------------------------------------------------------
