@@ -21,7 +21,7 @@
 import {
   languages, ui, sections, meta, views, numbers, challenge, howItRuns,
   integrity, architecture, medallion, stages, quickstart, steps,
-  decisions, reproducibility, summary
+  dimensionalModel, decisions, reproducibility, summary
 } from "./steps.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -412,6 +412,17 @@ function renderMedallion() {
     </li>`).join(""));
 }
 
+function renderDimensionalModel() {
+  set("#dimensional-model-title", esc(t(dimensionalModel.title)));
+  set("#grain-title", esc(t(dimensionalModel.grainTitle)));
+  set("#grain-note", t(dimensionalModel.grain));
+
+  /* The src comes from the markup, so only the accessible name follows the
+     language. Same contract as the illustration in band 01. */
+  const fig = $("#model-figure");
+  if (fig) fig.setAttribute("alt", attr(t(dimensionalModel.diagramAlt)));
+}
+
 function renderDecisions() {
   set("#decisions-title", esc(t(decisions.title)));
   set("#decisions-thesis", esc(t(decisions.thesis)));
@@ -708,6 +719,7 @@ function render() {
   renderIntegrity();
   renderMedallion();
   renderWalkChrome();
+  renderDimensionalModel();
   renderDecisions();
   renderReproducibility();
   renderSummary();

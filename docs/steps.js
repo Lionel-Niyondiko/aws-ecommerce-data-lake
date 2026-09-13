@@ -1438,7 +1438,29 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
 ];
 
 /* ---------------------------------------------------------------------------
-   10 · Architecture decisions
+   10 · The dimensional model
+   --------------------------------------------------------------------------- */
+/* The diagram file is referenced from index.html so it loads without waiting
+   for the module. Only the localised strings live here. */
+
+export const dimensionalModel = {
+  title: { en: "Dimensional model", fr: "Modèle dimensionnel" },
+  grainTitle: {
+    en: "The grain, a three-term key",
+    fr: "Le grain, une clé à trois termes"
+  },
+  grain: {
+    en: "Selected grain: one row in <code>fact_ventes</code> = one product (<code>product_id</code>) billed under an invoice number (<code>invoiceno</code>) at a given timestamp (<code>invoice_timestamp</code>).",
+    fr: "Grain retenu : une ligne de <code>fact_ventes</code> = un produit (<code>product_id</code>) facturé sous un numéro de facture (<code>invoiceno</code>) à un horodatage donné (<code>invoice_timestamp</code>)."
+  },
+  diagramAlt: {
+    en: "Entity relationship diagram of the star schema: fact_ventes at the centre, joined to dim_produit, dim_client and dim_date.",
+    fr: "Diagramme entité-association du modèle en étoile : fact_ventes au centre, joint à dim_produit, dim_client et dim_date."
+  }
+};
+
+/* ---------------------------------------------------------------------------
+   11 · Architecture decisions
    --------------------------------------------------------------------------- */
 
 export const decisions = {
@@ -1492,7 +1514,7 @@ export const decisions = {
 };
 
 /* ---------------------------------------------------------------------------
-   11 · Built to be rebuilt
+   12 · Built to be rebuilt
    --------------------------------------------------------------------------- */
 
 export const reproducibility = {
@@ -1550,7 +1572,7 @@ export const reproducibility = {
 };
 
 /* ---------------------------------------------------------------------------
-   12 · In summary
+   13 · In summary
    --------------------------------------------------------------------------- */
 
 export const summary = {

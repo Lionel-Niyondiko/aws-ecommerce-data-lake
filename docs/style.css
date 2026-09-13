@@ -669,6 +669,13 @@ html:not([data-theme="dark"]) .theme-btn .i-sun { display: none; }
 }
 html[data-theme="dark"] .flow-plate-body { background: #F1EFEA; }
 
+/* The dimensional model is a schema, not a drawing: shrinking it to a phone
+   width would make it unreadable. Same answer as the architecture plate, so
+   the scroll stays INSIDE the plate and the page never gains a horizontal
+   scrollbar. */
+.flow-plate--diagram .flow-plate-body { overflow-x: auto; }
+.flow-plate--diagram .flow-plate-body img { min-width: 900px; }
+
 /* ===========================================================================
    04 — MEDALLION
    =========================================================================== */
