@@ -1,5 +1,5 @@
 -- ===========================================================================
--- QUALITY — measure the anomalies before deciding what to do about them
+-- QUALITY - measure the anomalies before deciding what to do about them
 -- ===========================================================================
 -- This file produces nothing. It earns its place by predicting that silver
 -- will hold 7,547 rows BEFORE they are built. Without that prediction the next
@@ -48,7 +48,7 @@ FROM groups;
 
 -- ---------------------------------------------------------------------------
 -- Near-duplicates: same (invoiceno, productid), different values.
--- Expected 89 groups / 172 rows — and they are KEPT, not deduplicated.
+-- Expected 89 groups / 172 rows - and they are KEPT, not deduplicated.
 --
 -- Deduplicating with ROW_NUMBER() needs two things: a real business key, and
 -- an ordering column expressing a version. Neither exists here. invoiceno is
@@ -88,7 +88,7 @@ SELECT
     MAX(TRY(date_parse(invoicedate, '%Y-%m-%d %H:%i:%s')))          AS max_date
 FROM orders_raw;
 
--- One single bad value, 29 times: '31/02/2026'. It is wrong twice over —
+-- One single bad value, 29 times: '31/02/2026'. It is wrong twice over -
 -- wrong format AND a date that does not exist. Fixing the format is not enough.
 SELECT invoicedate, COUNT(*) AS n
 FROM orders_raw
@@ -166,11 +166,11 @@ SELECT COUNT(*)                   AS total,        -- 7956
 FROM standardised;
 
 -- ---------------------------------------------------------------------------
--- Orphan keys — the heart of business question 6.
+-- Orphan keys - the heart of business question 6.
 -- Expected: 146 product rows / 84 customer rows / 157 missing customers.
 --
--- Never use NOT IN here. "x NOT IN (SELECT id ...)" evaluates to NULL — hence
--- false — as soon as the subquery contains a single NULL, and returns zero
+-- Never use NOT IN here. "x NOT IN (SELECT id ...)" evaluates to NULL - hence
+-- false - as soon as the subquery contains a single NULL, and returns zero
 -- orphans without raising anything. Anti-join is immune to that.
 -- ---------------------------------------------------------------------------
 WITH o AS (
@@ -204,12 +204,13 @@ INNER JOIN products_raw p ON p.id = o.product_id
 INNER JOIN users_raw    u ON u.id = o.customer_id;
 
 -- ---------------------------------------------------------------------------
--- Anomalies the brief never mentions
+-- Anomalies
 -- ---------------------------------------------------------------------------
 
 -- invoiceno is NOT an order key: 2226 distinct numbers, 1834 of them (82%)
 -- carrying more than one date. Consequences: COUNT(DISTINCT invoiceno) per
 -- month double-counts, and "average basket" cannot group on it alone.
+
 WITH per_invoice AS (
     SELECT invoiceno, COUNT(DISTINCT invoicedate) AS distinct_dates
     FROM orders_raw WHERE invoicedate <> ''
@@ -221,12 +222,12 @@ SELECT COUNT(*)                        AS invoices,          -- 2226
 FROM per_invoice;
 
 -- brand is an ABSENT KEY, not a null value: 62 of 130 products.
--- discountedPrice does not exist at all — silver computes it.
+-- discountedPrice does not exist at all - silver computes it.
 SELECT COUNT(*) AS products, COUNT_IF(brand IS NULL) AS without_brand  -- 130 | 62
 FROM products_raw;
 
--- Every customer is American. Sales by country MUST come from the fact table,
--- never from dim_client, or the answer is one row and no error.
+-- Every customer is American. Sales by country MUST then come from the fact table,
+-- never from dim_client
 SELECT address.country AS customer_country, COUNT(*) AS customers
 FROM users_raw GROUP BY address.country;   -- United States | 130
 
@@ -237,8 +238,7 @@ FROM users_raw GROUP BY address.country;   -- United States | 130
 --        -> R4 price > 0  (-74) -> 7661
 --        -> R5 quantity   (-114) -> 7547        revenue 9,284,872.42
 --
--- Note 156+65+74+116 = 411 but the real loss is 409: the rules overlap.
--- Naive subtraction is wrong, which is exactly why this is measured.
+-- Real loss: 156+65+74+114 = 409
 -- ---------------------------------------------------------------------------
 WITH base AS (SELECT DISTINCT invoiceno, productid, quantity, invoicedate,
                               unitprice, customerid, country FROM orders_raw),

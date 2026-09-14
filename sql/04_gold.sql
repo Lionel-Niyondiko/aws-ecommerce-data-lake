@@ -1,8 +1,7 @@
 -- ===========================================================================
--- GOLD — star schema
+-- GOLD - star schema
 -- ===========================================================================
--- Gold derives from SILVER ONLY. No reference to *_raw appears below, and CI
--- enforces it:  grep -i '_raw' sql/04_gold.sql
+-- Gold derives from SILVER ONLY. No reference to *_raw appears below
 --
 -- GRAIN: one row = one product (product_id) invoiced under an invoice number
 --        (invoiceno) at a given timestamp (invoice_timestamp).
@@ -12,8 +11,9 @@
 --   Without the timestamp, (invoiceno, product_id) yields only 7,462 distinct
 --   values: 85 collisions. All 85 colliding pairs carry a different timestamp,
 --   so the third term resolves the problem completely rather than partially.
---   The key is only unique AFTER silver's R1 deduplication.
---
+
+
+-- Lessons learned:
 -- ORDER MATTERS: dimensions before the fact. The fact joins them to detect
 -- orphans, so reversing the order fails with "Table not found".
 --
@@ -21,17 +21,10 @@
 -- ===========================================================================
 
 -- ---------------------------------------------------------------------------
--- dim_date — 91 rows
+-- dim_date - 91 rows
 -- ---------------------------------------------------------------------------
 -- The calendar is GENERATED with sequence(), not derived from observed dates.
--- A calendar built from observations only contains days where something
--- happened, so an empty month disappears from a chart instead of showing zero.
--- Here all 91 days have sales, so it makes no visible difference — but the
--- pattern is the one to know.
---
--- date_id as a YYYYMMDD integer: readable, naturally sortable, 4 bytes.
--- No "Unknown" row: silver's R3 removed every undatable row, so no fact can
--- have an orphan date. A convention row nobody populates is dead weight.
+
 CREATE TABLE dim_date
 WITH (
     format              = 'PARQUET',
@@ -62,7 +55,7 @@ FROM calendar;
 
 
 -- ---------------------------------------------------------------------------
--- dim_produit — 131 rows (130 + one convention row)
+-- dim_produit - 131 rows (130 + one convention row)
 -- ---------------------------------------------------------------------------
 -- product_id = -1 catches the 139 fact rows whose product left the catalog
 -- ($183,284.04).
@@ -70,16 +63,12 @@ FROM calendar;
 -- Why -1 and not 9999: the real orphan ids run 9002 to 9992. A technical key
 -- at 9999 would live in the SAME value space as natural orphan keys, so a
 -- future orphan could BE 9999 and get silently joined to a real dimension row.
--- A negative integer can never collide with a positive natural key.
+-- Lesson learned: A negative integer can never collide with a positive natural key.
 --
 -- UNION ALL requires strictly identical types per column, hence the explicit
--- CAST(NULL AS ...). This is the number one error in this block.
+-- CAST(NULL AS ...). This was the number one error in this block.
 --
--- The dimension carries EVERY column of products_clean. A column that is clean
--- in silver and absent from gold is information lost with no trace and no
--- justification: the reader cannot tell a deliberate exclusion from an
--- oversight. Widening costs nothing here — 131 rows — and the alternative is a
--- dimension that quietly decides what questions may be asked of it.
+-- The dimension carries EVERY column of products_clean. 
 CREATE TABLE dim_produit
 WITH (
     format              = 'PARQUET',
@@ -123,13 +112,12 @@ SELECT -1                    AS product_id,
        CAST(NULL AS varchar) AS shipping_information,
        CAST(NULL AS varchar) AS availability_status,
        CAST(NULL AS integer) AS minimum_order_quantity,
-       -- the lineage column is a partition value, declared string upstream
        CAST(NULL AS varchar) AS source_ingestion_date,
        true                  AS is_unknown;
 
 
 -- ---------------------------------------------------------------------------
--- dim_client — 132 rows (130 + TWO convention rows)
+-- dim_client - 132 rows (130 + TWO convention rows)
 -- ---------------------------------------------------------------------------
 -- Two, not one. The brief asks for a single Unknown row, but the situations
 -- are semantically different and question 6 is richer for separating them:
@@ -235,10 +223,10 @@ SELECT -2                    AS customer_id,
 
 
 -- ---------------------------------------------------------------------------
--- fact_ventes — 7,547 rows
+-- fact_ventes - 7,547 rows
 -- ---------------------------------------------------------------------------
 -- LEFT JOIN, NOT INNER JOIN. This is the whole point of question 6: an INNER
--- JOIN would remove 376 rows and $464,547.61 — 5.0% of revenue — without an
+-- JOIN would remove 376 rows and $464,547.61 - 5.0% of revenue - without an
 -- error, a warning, or a trace. The LEFT JOIN keeps the row and yields NULL;
 -- the COALESCE/CASE then attaches it to the convention key.
 --
