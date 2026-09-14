@@ -13,3 +13,8 @@ __pycache__/
 
 # Local pipeline output
 .out/
+
+# local IAM/OIDC bootstrap scratch files
+ci-policy.json
+trust-policy.json
+cert*.pem
