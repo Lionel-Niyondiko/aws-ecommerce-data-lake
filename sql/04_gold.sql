@@ -119,20 +119,15 @@ SELECT -1                    AS product_id,
 -- ---------------------------------------------------------------------------
 -- dim_client - 132 rows (130 + TWO convention rows)
 -- ---------------------------------------------------------------------------
--- Two, not one. The brief asks for a single Unknown row, but the situations
--- are semantically different and question 6 is richer for separating them:
+
+-- TWO convention rows:
 --
 --   -1  Orphan       the id exists, the account was deleted    82 rows  $115,751.57
 --   -2  Not recorded no id on the order at all                155 rows  $165,512.00
 --
 -- The first is a data governance issue, the second a sales process issue.
 -- Different causes, different fixes.
---
--- Same rule as dim_produit: the dimension carries EVERY column of users_clean.
--- The convention rows are now written column by column with explicit aliases.
--- UNION ALL is positional, so at eight columns the compact form was readable
--- and at thirty it would be a shift waiting to happen. The aliases are ignored
--- by the engine and read by the reviewer, which is the whole point.
+
 CREATE TABLE dim_client
 WITH (
     format              = 'PARQUET',
@@ -225,13 +220,11 @@ SELECT -2                    AS customer_id,
 -- ---------------------------------------------------------------------------
 -- fact_ventes - 7,547 rows
 -- ---------------------------------------------------------------------------
--- LEFT JOIN, NOT INNER JOIN. This is the whole point of question 6: an INNER
--- JOIN would remove 376 rows and $464,547.61 - 5.0% of revenue - without an
+-- LEFT JOIN, NOT INNER JOIN. This is : an INNER
+-- Lesson learned: an JOIN would remove 376 rows and $464,547.61 - 5.0% of revenue - without an
 -- error, a warning, or a trace. The LEFT JOIN keeps the row and yields NULL;
 -- the COALESCE/CASE then attaches it to the convention key.
---
--- It is the only place in this project where choosing between two three-letter
--- SQL keywords decides 5% of the revenue.
+
 CREATE TABLE fact_ventes
 WITH (
     format              = 'PARQUET',
