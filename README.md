@@ -49,7 +49,7 @@ These commands do not create AWS resources and do not require AWS credentials.
 Expected result:
 
 ```text
-23 passed, 15 deselected
+26 passed, 17 deselected
 Terraform configuration is valid
 ```
 
@@ -391,7 +391,7 @@ A successful local validation looks like:
 
 ```text
 make test
-23 passed, 15 deselected
+26 passed, 17 deselected
 
 make validate
 Success! The configuration is valid.

@@ -21,7 +21,7 @@
 import {
   languages, ui, sections, meta, views, numbers, challenge, howItRuns,
   integrity, architecture, medallion, stages, quickstart, steps,
-  dimensionalModel, decisions, reproducibility, summary
+  dimensionalModel, questions, decisions, reproducibility, summary
 } from "./steps.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -423,6 +423,29 @@ function renderDimensionalModel() {
   if (fig) fig.setAttribute("alt", attr(t(dimensionalModel.diagramAlt)));
 }
 
+function renderQuestions() {
+  set("#questions-title", esc(t(questions.title)));
+  set("#questions-note", t(questions.note));
+
+  /* Same figure.code component the walkthrough uses for SQL, so the six
+     queries read exactly like every other code block on the page. */
+  set("#questions-list", questions.items.map((q) => `
+    <figure class="code">
+      <figcaption>
+        <span class="what">${esc(q.n)} · ${esc(t(q.question))}</span>
+        <span class="src">${esc(questions.source)}</span>
+      </figcaption>
+      <pre><code>${esc(q.sql)}</code></pre>
+    </figure>`).join(""));
+
+  set("#questions-table-title", esc(t(questions.tableTitle)));
+  set("#questions-table", questions.items.map((q) => `
+    <div class="ci-row">
+      <span class="path">${esc(q.n)}</span>
+      <span class="what"><b>${esc(t(q.question))}</b>${esc(t(q.result))}</span>
+    </div>`).join(""));
+}
+
 function renderDecisions() {
   set("#decisions-title", esc(t(decisions.title)));
   set("#decisions-thesis", esc(t(decisions.thesis)));
@@ -720,6 +743,7 @@ function render() {
   renderMedallion();
   renderWalkChrome();
   renderDimensionalModel();
+  renderQuestions();
   renderDecisions();
   renderReproducibility();
   renderSummary();

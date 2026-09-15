@@ -1307,6 +1307,22 @@ figure.code pre {
 }
 figure.code pre code { background: none; border: 0; padding: 0; font-size: inherit; }
 
+/* The six queries sit at band level, where figure.code has neither the gutter
+   nor the width it gets inside the walkthrough panel. Scoped to the list, so
+   the component itself is untouched everywhere else. */
+.q-list { padding: clamp(1.4rem, 3vw, 2.2rem) var(--gutter) 0; }
+.q-list figure.code { max-width: 78ch; }
+.q-list figure.code:last-child { margin-bottom: 0; }
+
+/* The recap reuses .ci-row. Its .what carries two lines here, so the question
+   is promoted to ink and the measured result stays grey underneath. */
+#questions-table .what b {
+  display: block;
+  margin-bottom: .2rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* decision */
 .decision { max-width: var(--measure); margin-bottom: 1.5rem; border: 1px solid var(--rule); border-top: 2px solid var(--ink); }
 .decision-in { padding: 1.1rem 1.2rem 1.3rem; }

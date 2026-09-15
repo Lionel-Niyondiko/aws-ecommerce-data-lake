@@ -1,9 +1,10 @@
 # ===========================================================================
 # pages.yml — publishes docs/ to GitHub Pages.
 # ===========================================================================
-# No build step. docs/ is six static files: index.html, style.css, app.js,
-# steps.js, architecture.svg, data-pipeline.webp. What is committed is served,
-# which means the page cannot break because a toolchain moved on.
+# No build step. docs/ is seven static files: index.html, style.css, app.js,
+# steps.js, architecture.svg, data-pipeline.webp, dimensional-model.png.
+# What is committed is exactly what is served, which means the page cannot
+# break because a toolchain moved on.
 #
 # Enable once: Settings > Pages > Source = GitHub Actions.
 # ===========================================================================
@@ -40,7 +41,8 @@ jobs:
       # publishing rather than after.
       - name: check the page is complete
         run: |
-          for f in index.html style.css app.js steps.js architecture.svg data-pipeline.webp; do
+          for f in index.html style.css app.js steps.js architecture.svg \
+                   data-pipeline.webp dimensional-model.png; do
             test -f "docs/$f" || { echo "::error::docs/$f is missing"; exit 1; }
           done
 
@@ -64,7 +66,8 @@ jobs:
 
             const required = ["languages","ui","sections","meta","views","numbers","challenge",
                               "howItRuns","integrity","architecture","medallion","stages",
-                              "quickstart","steps","decisions","reproducibility","summary"];
+                              "quickstart","steps","dimensionalModel","questions","decisions",
+                              "reproducibility","summary"];
             for (const k of required)
               if (!m[k]) fail(`steps.js is missing the "${k}" export`);
 

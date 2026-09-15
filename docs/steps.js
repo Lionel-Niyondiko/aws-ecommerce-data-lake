@@ -73,6 +73,7 @@ export const ui = {
     { id: "integrity", label: { en: "Integrity", fr: "Intégrité" } },
     { id: "architecture", label: { en: "Architecture", fr: "Architecture" } },
     { id: "walkthrough", label: { en: "Walkthrough", fr: "Parcours" } },
+    { id: "questions", label: { en: "Business questions", fr: "Questions métier" } },
     { id: "decisions", label: { en: "Decisions", fr: "Décisions" } },
     { id: "summary", label: { en: "Summary", fr: "En résumé" } }
   ],
@@ -224,7 +225,8 @@ export const meta = {
     [{ en: "Interface", fr: "Interface" }, { en: "Makefile, 11 targets", fr: "Makefile, 11 cibles" }],
     [{ en: "Orchestration", fr: "Orchestration" }, "run_pipeline.sh"],
     [{ en: "Tests", fr: "Tests" }, { en: "23 offline + 15 on AWS", fr: "23 hors ligne + 15 sur AWS" }],
-    ["CI", { en: "GitHub Actions with OIDC", fr: "GitHub Actions avec OIDC" }],
+    ["CI", { en: "GitHub Actions, offline checks",
+             fr: "GitHub Actions, contrôles hors ligne" }],
     [{ en: "Region", fr: "Région" }, "us-east-1"],
     [{ en: "Teardown", fr: "Destruction" }, "terraform destroy"],
     [{ en: "Licence", fr: "Licence" }, "MIT"]
@@ -1417,8 +1419,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       ]
     },
     whyItMatters: {
-      en: "The weekly CI workflow runs exactly this walkthrough against a real account and destroys everything afterwards, with <code>if: always()</code> so a failed assertion still tears the infrastructure down.",
-      fr: "Le workflow CI hebdomadaire exécute exactement ce parcours sur un compte réel et détruit tout ensuite, avec <code>if: always()</code> pour qu’une assertion en échec démonte quand même l’infrastructure."
+      en: "Destroying is part of the run, not an afterthought. The AWS validation is manual from start to finish, so nothing tears the infrastructure down on its own: <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> is one sequence, and the last command is the one that stops the billing.",
+      fr: "La destruction fait partie de l’exécution, pas d’un après-coup. La validation AWS est manuelle du début à la fin : rien ne démonte l’infrastructure tout seul. <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> forment une seule séquence, et la dernière commande est celle qui arrête la facturation."
     },
     keyIdea: {
       en: "The project is designed to be rebuilt.",
@@ -1457,6 +1459,179 @@ export const dimensionalModel = {
     en: "Entity relationship diagram of the star schema: fact_ventes at the centre, joined to dim_produit, dim_client and dim_date.",
     fr: "Diagramme entité-association du modèle en étoile : fact_ventes au centre, joint à dim_produit, dim_client et dim_date."
   }
+};
+
+/* ---------------------------------------------------------------------------
+   11 · The six business questions
+   --------------------------------------------------------------------------- */
+/* The six queries are copied from sql/05_analytics.sql with their comments
+   removed, nothing else. The file holds companion queries for Q2, Q3 and Q6
+   (the overlap count, the additivity proof, the INNER JOIN cost); the one
+   shown here is the query that answers the question itself. */
+
+export const questions = {
+  title: { en: "The six business questions", fr: "Les 6 questions métier" },
+  note: {
+    en: "The six queries below are the ones in <code>sql/05_analytics.sql</code>, shown without their comments. The figures beside each question are measured, not estimated.",
+    fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>, présentées sans leurs commentaires. Les chiffres associés à chaque question sont mesurés, pas estimés."
+  },
+  source: "sql/05_analytics.sql",
+  tableTitle: {
+    en: "The six questions and what they returned",
+    fr: "Les six questions et ce qu’elles ont retourné"
+  },
+  items: [
+    {
+      n: "Q1",
+      question: {
+        en: "Total revenue, and revenue by country, over the last three months.",
+        fr: "Chiffre d’affaires total et par pays sur les 3 derniers mois."
+      },
+      sql: `WITH bounds AS (
+    SELECT MAX(d.full_date) AS last_day
+    FROM fact_ventes f JOIN dim_date d ON d.date_id = f.date_id
+)
+SELECT
+    f.country,
+    COUNT(*)                                            AS rows,
+    ROUND(SUM(f.line_amount), 2)                        AS revenue,
+    ROUND(100.0 * SUM(f.line_amount)
+          / SUM(SUM(f.line_amount)) OVER (), 2)         AS pct_revenue
+FROM fact_ventes f
+JOIN dim_date d ON d.date_id = f.date_id
+CROSS JOIN bounds b
+WHERE d.full_date > DATE_ADD('month', -3, b.last_day)
+GROUP BY f.country
+ORDER BY revenue DESC;`,
+      result: {
+        en: "Ten countries between 8.8% and 10.9%. No market dominates. The three-month window covers 100% of the data.",
+        fr: "Dix pays entre 8,8 % et 10,9 %. Aucun marché ne domine. La fenêtre de trois mois couvre 100 % du jeu de données."
+      }
+    },
+    {
+      n: "Q2",
+      question: {
+        en: "Top 10 products by revenue and top 10 by quantity sold, then the comparison.",
+        fr: "Top 10 produits par chiffre d’affaires et top 10 par quantité vendue, puis comparaison."
+      },
+      sql: `SELECT p.product_id, p.title, p.category,
+       ROUND(SUM(f.line_amount), 2) AS revenue,
+       SUM(f.quantity)              AS quantity,
+       ROUND(AVG(f.unit_price), 2)  AS avg_price
+FROM fact_ventes f
+JOIN dim_produit p ON p.product_id = f.product_id
+WHERE p.product_id <> -1
+GROUP BY p.product_id, p.title, p.category
+ORDER BY revenue DESC
+LIMIT 10;`,
+      result: {
+        en: "Seven of the ten products appear in both rankings. The three differences come down to unit price.",
+        fr: "Sept produits sur dix figurent dans les deux classements. Les trois écarts s’expliquent par le prix unitaire."
+      }
+    },
+    {
+      n: "Q3",
+      question: {
+        en: "Monthly trend of revenue and order count.",
+        fr: "Évolution mensuelle du chiffre d’affaires et du nombre de commandes."
+      },
+      sql: `SELECT
+    d.year, d.month, d.month_name,
+    ROUND(SUM(f.line_amount), 2) AS revenue,
+    COUNT(*)                     AS rows,
+    COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders,
+    COUNT(DISTINCT f.invoiceno)  AS raw_invoice_numbers,
+    ROUND(SUM(f.line_amount)
+          / COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)), 2)
+                                 AS avg_basket
+FROM fact_ventes f
+JOIN dim_date d ON d.date_id = f.date_id
+GROUP BY d.year, d.month, d.month_name
+ORDER BY d.year, d.month;`,
+      result: {
+        en: "April and July are partial months. On the complete months, May to June: revenue +3.0%, average basket +6.9%, on fewer orders.",
+        fr: "Avril et juillet sont des mois partiels. Sur les mois complets, de mai à juin : chiffre d’affaires +3,0 %, panier moyen +6,9 %, sur moins de commandes."
+      }
+    },
+    {
+      n: "Q4",
+      question: {
+        en: "Average basket by country.",
+        fr: "Panier moyen par pays."
+      },
+      sql: `WITH orders AS (
+    SELECT f.invoiceno, f.date_id, f.country,
+           SUM(f.line_amount) AS order_amount,
+           SUM(f.quantity)    AS order_items
+    FROM fact_ventes f
+    GROUP BY f.invoiceno, f.date_id, f.country
+)
+SELECT country,
+       COUNT(*)                                          AS orders,
+       ROUND(SUM(order_amount), 2)                       AS revenue,
+       ROUND(AVG(order_amount), 2)                       AS avg_basket,
+       ROUND(APPROX_PERCENTILE(order_amount, 0.5), 2)    AS median_basket,
+       ROUND(AVG(order_items), 2)                        AS avg_items
+FROM orders
+GROUP BY country
+ORDER BY avg_basket DESC;`,
+      result: {
+        en: "Global average basket $1,248.13. Switzerland is second by revenue and last by basket: it earns through order volume, not order value.",
+        fr: "Panier moyen global de 1 248,13 $. La Suisse est deuxième en chiffre d’affaires et dernière en panier moyen : elle gagne par le volume de commandes, pas par leur valeur."
+      }
+    },
+    {
+      n: "Q5",
+      question: {
+        en: "Top 5 customers by cumulative revenue.",
+        fr: "Top 5 clients par chiffre d’affaires cumulé."
+      },
+      sql: `SELECT c.customer_id,
+       c.firstname || ' ' || c.lastname AS customer,
+       c.email, c.city, c.company_name,
+       ROUND(SUM(f.line_amount), 2)     AS revenue,
+       COUNT(*)                         AS rows,
+       COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders
+FROM fact_ventes f
+JOIN dim_client c ON c.customer_id = f.customer_id
+WHERE c.customer_id > 0
+GROUP BY c.customer_id, c.firstname, c.lastname, c.email, c.city, c.company_name
+ORDER BY revenue DESC
+LIMIT 5;`,
+      result: {
+        en: "Liam Smith leads with $139,567.96. Identified customers carry 96.97% of revenue.",
+        fr: "Liam Smith arrive en tête avec 139 567,96 $. Les clients identifiés portent 96,97 % du chiffre d’affaires."
+      }
+    },
+    {
+      n: "Q6",
+      question: {
+        en: "Order lines whose product or customer is absent from the catalog: volume, revenue, and how the orphan keys are handled.",
+        fr: "Lignes de commande avec produit ou client absent du catalogue, volume, chiffre d’affaires et traitement des clés orphelines."
+      },
+      sql: `SELECT
+    CASE
+        WHEN product_id = -1 AND customer_id < 0 THEN 'Product AND customer missing'
+        WHEN product_id = -1                     THEN 'Product removed from catalog'
+        WHEN customer_id = -1                    THEN 'Customer deleted from catalog'
+        WHEN customer_id = -2                    THEN 'Customer not recorded'
+        ELSE                                          'Complete keys'
+    END                                                       AS population,
+    COUNT(*)                                                  AS rows,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2)        AS pct_rows,
+    SUM(quantity)                                             AS quantity,
+    ROUND(SUM(line_amount), 2)                                AS revenue,
+    ROUND(100.0 * SUM(line_amount)
+          / SUM(SUM(line_amount)) OVER (), 2)                 AS pct_revenue
+FROM fact_ventes
+GROUP BY 1
+ORDER BY revenue DESC;`,
+      result: {
+        en: "376 rows, 4.98% of rows, $464,547.61, that is 5.00% of revenue. Attached to the convention rows, not excluded.",
+        fr: "376 lignes, 4,98 % des lignes, 464 547,61 $, soit 5,00 % du chiffre d’affaires. Rattachées aux lignes de convention, pas exclues."
+      }
+    }
+  ]
 };
 
 /* ---------------------------------------------------------------------------
@@ -1514,7 +1689,7 @@ export const decisions = {
 };
 
 /* ---------------------------------------------------------------------------
-   12 · Built to be rebuilt
+   13 · Built to be rebuilt
    --------------------------------------------------------------------------- */
 
 export const reproducibility = {
@@ -1529,8 +1704,9 @@ export const reproducibility = {
     [{ en: "AWS resources", fr: "Ressources AWS" }, "S3, Glue, IAM, Budgets, SNS, CloudWatch"],
     [{ en: "Pipeline", fr: "Pipeline" }, { en: "Executable shell script", fr: "Script shell exécutable" }],
     [{ en: "Tests", fr: "Tests" }, { en: "23 offline tests + 15 AWS tests", fr: "23 tests hors ligne + 15 tests AWS" }],
-    ["CI", "GitHub Actions"],
-    [{ en: "CI authentication", fr: "Authentification CI" }, "OIDC"],
+    ["CI", { en: "GitHub Actions, offline only", fr: "GitHub Actions, hors ligne uniquement" }],
+    [{ en: "AWS validation", fr: "Validation AWS" },
+     { en: "manual, make test-aws", fr: "manuelle, make test-aws" }],
     [{ en: "Teardown", fr: "Destruction" }, "terraform destroy"]
   ],
   claimsTitle: { en: "The guarantees sought", fr: "Les garanties recherchées" },
@@ -1543,14 +1719,14 @@ export const reproducibility = {
     [{ en: "the SQL transformations run in the intended order", fr: "les transformations SQL s’exécutent dans l’ordre prévu" }, "run_pipeline.sh"],
     [{ en: "the expected results are verifiable", fr: "les résultats attendus sont vérifiables" }, "pytest"],
     [{ en: "the offline tests can run without an AWS account", fr: "les tests hors ligne peuvent tourner sans compte AWS" }, "make test"],
-    [{ en: "the AWS tests can validate the deployed environment", fr: "les tests AWS peuvent valider l’environnement réellement déployé" }, "make test-aws"],
+    [{ en: "the AWS tests can validate the deployed environment, by hand", fr: "les tests AWS peuvent valider l’environnement réellement déployé, à la main" }, "make test-aws"],
     [{ en: "the resources can be removed cleanly", fr: "les ressources peuvent être supprimées proprement" }, "make destroy"]
   ],
   ci: {
     title: { en: "What CI actually does", fr: "Ce que fait réellement la CI" },
     body: {
-      en: "CI does not simply check that the files exist. It verifies the behaviour of the project. Part of the assertions run without AWS. The tests that need the AWS lake are run separately. GitHub Actions authenticates with <strong>OIDC</strong>, with no AWS key stored in the repository. That keeps an automated validation loop while limiting permanent access and unnecessary cost.",
-      fr: "La CI ne se contente pas de vérifier que les fichiers existent. Elle vérifie le comportement du projet. Une partie des assertions est exécutée sans AWS. Les tests nécessitant le lac AWS sont exécutés séparément. L’authentification GitHub Actions utilise <strong>OIDC</strong>, sans clé AWS stockée dans le dépôt. Cela permet de conserver une boucle de validation automatisée tout en limitant les accès permanents et les coûts inutiles."
+      en: "CI does not simply check that the files exist, it verifies the behaviour of the project. Two halves, and only one of them is automatic. <strong>The automatic half</strong> runs on every push and never touches AWS: Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> and tflint, ShellCheck on the shell scripts, the offline test suite, and the guards that stop Gold from reading Bronze. It needs no credentials and costs nothing. <strong>The AWS half is manual</strong>: <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, run against a real account when there is a reason to run them. Nothing deploys or bills on a schedule.",
+      fr: "La CI ne se contente pas de vérifier que les fichiers existent, elle vérifie le comportement du projet. Deux moitiés, dont une seule est automatique. <strong>La moitié automatique</strong> s’exécute à chaque push et ne touche jamais à AWS : Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> et tflint, ShellCheck sur les scripts, la suite de tests hors ligne, et les gardes qui empêchent la Gold de lire la Bronze. Elle ne demande aucune clé et ne coûte rien. <strong>La moitié AWS est manuelle</strong> : <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, lancées sur un compte réel quand il y a une raison de les lancer. Rien ne se déploie ni ne se facture sur un calendrier."
     }
   },
   traceTitle: { en: "What reproducibility buys", fr: "Ce que la reproductibilité apporte" },
@@ -1572,7 +1748,7 @@ export const reproducibility = {
 };
 
 /* ---------------------------------------------------------------------------
-   13 · In summary
+   14 · In summary
    --------------------------------------------------------------------------- */
 
 export const summary = {
@@ -1596,7 +1772,7 @@ export const summary = {
     en: "The project uses a deliberately limited set of tools:",
     fr: "Le projet utilise pour cela un ensemble volontairement limité d’outils :"
   },
-  stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python", "pytest", "GitHub Actions", "OIDC"],
+  stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python", "pytest", "GitHub Actions"],
   stackNote: {
     en: "What makes the project interesting is less the number of services used than the way they are assembled and verified.",
     fr: "L’intérêt du projet est moins le nombre de services utilisés que la manière dont ils sont assemblés et vérifiés."
