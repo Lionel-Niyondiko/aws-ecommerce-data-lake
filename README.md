@@ -140,8 +140,6 @@ Configure the AWS CLI using your preferred authentication method, then verify th
 aws sts get-caller-identity
 ```
 
-The repository does not require long-lived AWS keys in GitHub for its E2E workflow. GitHub Actions uses OIDC to obtain temporary AWS credentials.
-
 ---
 
 ## Verify your environment
@@ -294,7 +292,7 @@ scripts/     run_pipeline.sh, the pipeline entry point
 data/        three read-only source files, intentionally versioned for reproducibility
 tests/       pytest suite, with offline and deployed-AWS tests
 docs/        static case study published on GitHub Pages
-.github/     CI, E2E and Pages workflows
+.github/     CI and Pages workflows
 Makefile     project command interface
 ```
 
@@ -360,50 +358,30 @@ Knowing when not to add a tool is part of the architecture exercise.
 
 ---
 
-## CI and end-to-end testing
+## CI and AWS validation
 
 | Workflow | AWS | Trigger | What it proves |
 |---|---|---|---|
 | `ci.yml` | No | Every push and PR | Terraform validation, shell checks and offline tests |
-| `e2e.yml` | Yes | Manual + Monday schedule | Real AWS deployment, pipeline execution, AWS assertions and clean teardown |
 | `pages.yml` | No | Pushes affecting `docs/` | Publishes the walkthrough |
 
 ### CI
 
 `ci.yml` is the zero-cost validation path. It runs on every push and pull request without AWS credentials.
 
-### E2E
+### AWS validation
 
-`e2e.yml` is the full proof path. It uses GitHub OIDC instead of long-lived AWS access keys, deploys the project, runs the pipeline and analytics queries, executes the AWS assertions, uploads evidence, and destroys the infrastructure even when an earlier step fails.
+AWS validation is available locally through the deployed environment:
 
-The E2E workflow is optional for local development. You only need the one-time OIDC setup if you want GitHub Actions to deploy the project into your AWS account.
-
----
-
-## One-time GitHub OIDC setup
-
-This section is only required for the **GitHub Actions E2E workflow**.
-
-It is **not required** to:
-
-- clone the repository
-- run the local tests
-- validate Terraform locally
-- run the full project manually from your own AWS CLI session
-
-The setup consists of:
-
-```text
-GitHub Actions
-      ↓ OIDC
-AWS IAM role
-      ↓
-Temporary AWS credentials
-      ↓
-Terraform
+```bash
+make deploy
+make pipeline
+make analytics
+make test-aws
+make destroy
 ```
 
-No long-lived AWS access keys are stored in the repository.
+`make test-aws` verifies the deployed tables and expected business invariants. The AWS validation path is deliberately manual, while CI remains automatic and zero-cost.
 
 ---
 
@@ -435,7 +413,7 @@ Terraform state empty    ✅
 
 A complete run should create the expected AWS resources, pass the AWS assertions, then remove all Terraform-managed resources.
 
-The business figures published above are asserted by the test suite. If they change unexpectedly, CI or E2E should expose the discrepancy instead of allowing the documentation to drift silently.
+The business figures published above are asserted by the test suite. If they change unexpectedly, CI or AWS validation should expose the discrepancy instead of allowing the documentation to drift silently.
 
 ---
 
@@ -484,20 +462,9 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 Never commit `terraform/terraform.tfvars`. It is intentionally ignored by Git.
 
 
-### AWS E2E cannot assume the role
-
-Check that:
-
-1. GitHub OIDC is configured in AWS.
-2. The IAM trust policy matches the OIDC subject format used by this repository.
-3. The repository variable `AWS_ROLE_ARN` is correct.
-4. The E2E workflow has `id-token: write` permission.
-
----
-
 ## Reproducibility
 
-Every important number in this README is asserted by `tests/test_pipeline.py` and re-verified by the E2E workflow.
+Every important number in this README is asserted by `tests/test_pipeline.py` and can be re-verified against a deployed AWS environment with `make test-aws`.
 
 The source data is versioned intentionally, the Terraform provider lock file is committed, and the AWS infrastructure is disposable.
 
