@@ -129,7 +129,7 @@ resource "aws_cloudwatch_metric_alarm" "bucket_size" {
   metric_name = "BucketSizeBytes"
 
   dimensions = {
-    BucketName = aws_s3_bucket.datalake.id
+    BucketName  = aws_s3_bucket.datalake.id
     StorageType = "StandardStorage"
   }
 

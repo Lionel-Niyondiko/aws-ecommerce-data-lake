@@ -1,0 +1,17 @@
+[project]
+name = "aws-ecommerce-data-lake"
+version = "0.1.0"
+description = "AWS E-commerce Data Lake"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "aws: tests requiring a deployed AWS data lake",
+]

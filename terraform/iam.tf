@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 
 locals {
-  
+
   trusted_principal = (
     var.trusted_principal_arn != ""
     ? var.trusted_principal_arn

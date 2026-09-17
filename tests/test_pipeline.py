@@ -521,7 +521,7 @@ def athena(sql):
                 ["aws", "athena", "get-query-execution", "--query-execution-id", qid,
                  "--query", "QueryExecution.Status.StateChangeReason",
                  "--output", "text"],
-                capture_output=True, text=True, env=env).stdout.strip()
+                capture_output=True, text=True, env=env, check=False,).stdout.strip()
             pytest.fail(f"Athena failed: {reason}\n{sql}")
         __import__("time").sleep(2)
 

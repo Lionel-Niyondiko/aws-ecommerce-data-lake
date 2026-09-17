@@ -7,14 +7,23 @@ terraform/terraform.tfvars
 
 # Python
 __pycache__/
+*.py[cod]
 .pytest_cache/
-*.pyc
+.ruff_cache/
 .venv/
 
 # Local pipeline output
 .out/
 
-# local IAM/OIDC bootstrap scratch files
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local IAM/OIDC bootstrap scratch files
 ci-policy.json
 trust-policy.json
 cert*.pem
+
+# VS Code
+.vscode/
