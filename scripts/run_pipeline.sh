@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# run_pipeline.sh — the only runtime script in this project
+# run_pipeline.sh 
 # ===========================================================================
-# One script, several sub-commands. Splitting it into six files would have
-# duplicated the credential handling, the Terraform output reading and the
-# Athena polling six times.
+# One script, several sub-commands. 
 #
 #   ./scripts/run_pipeline.sh all        ingest -> catalog -> silver -> gold
 #   ./scripts/run_pipeline.sh ingest     upload data/ to bronze/, partitioned
@@ -15,16 +13,6 @@
 #   ./scripts/run_pipeline.sh analytics  the six business questions
 #   ./scripts/run_pipeline.sh sql FILE   run any .sql file
 #
-# CREDENTIALS. The script assumes the least-privilege pipeline role, unless it
-# is ALREADY running under an assumed role — which is what happens in CI, where
-# OIDC has already produced one. Assuming a role from a role that cannot assume
-# it fails; skipping the step when the caller is already correct is what makes
-# the same script work on a laptop and in GitHub Actions.
-#
-# IDEMPOTENCE. Every rebuild drops the table AND deletes the S3 prefix. Athena
-# refuses a CTAS into a non-empty location, and DROP TABLE on an external table
-# does not delete files. Doing only one of the two produces the single most
-# common error in this lab: "External location must be empty".
 # ===========================================================================
 
 set -euo pipefail
@@ -51,7 +39,7 @@ command -v terraform >/dev/null 2>&1 || die "terraform not found."
 command -v jq        >/dev/null 2>&1 || die "jq not found."
 
 # ---------------------------------------------------------------------------
-# Terraform outputs. Read ONCE — each call costs a state read.
+# Terraform outputs. Read ONCE - each call costs a state read.
 # ---------------------------------------------------------------------------
 step "Reading the deployed infrastructure"
 TF_JSON="$(terraform -chdir=terraform output -json 2>/dev/null)" \
@@ -72,7 +60,7 @@ info "database $DATABASE"
 info "region   $REGION"
 
 # ---------------------------------------------------------------------------
-# Assume the pipeline role — unless already under an assumed role.
+# Assume the pipeline role 
 # ---------------------------------------------------------------------------
 CURRENT_ARN="$(aws sts get-caller-identity --query Arn --output text)"
 
@@ -99,7 +87,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# athena_run <sql> — submit, poll, fail loudly.
+# athena_run <sql> - submit, poll, fail loudly.
 # ---------------------------------------------------------------------------
 athena_run() {
     local sql="$1" qid state reason
@@ -136,19 +124,11 @@ athena_show() {
 }
 
 # ---------------------------------------------------------------------------
-# run_sql_file <path> — substitute ${BUCKET}, strip comments, split on ';',
+# run_sql_file <path> - substitute ${BUCKET}, strip comments, split on ';',
 # run each statement.
 #
-# ORDER MATTERS: comments are stripped BEFORE the split, never after. Several
-# comments in these files contain a semicolon — "130 rows; partitioning would
-# create more metadata than data" — and splitting first would cut the statement
-# that follows in half at that semicolon and send two broken fragments to
-# Athena. This is not hypothetical; it is the first bug this script had.
+# ORDER MATTERS: comments are stripped BEFORE the split, never after. 
 #
-# The splitter remains naive in one respect: it cannot handle a ';' inside a
-# string literal. That is a deliberate limit — none of the five files contains
-# one, and a correct SQL parser in bash is not a thing worth writing. If you
-# ever add one, use a real client.
 # ---------------------------------------------------------------------------
 run_sql_file() {
     local file="$1" n=0 stmt prepared
@@ -172,7 +152,7 @@ run_sql_file() {
 }
 
 # ---------------------------------------------------------------------------
-# rebuild_zone <table> <prefix> — drop the table AND clear the prefix.
+# rebuild_zone <table> <prefix> - drop the table AND clear the prefix.
 # ---------------------------------------------------------------------------
 rebuild_zone() {
     local table="$1" prefix="$2"

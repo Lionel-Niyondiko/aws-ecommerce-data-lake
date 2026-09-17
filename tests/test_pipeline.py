@@ -31,7 +31,7 @@ SQL = ROOT / "sql"
 
 
 # ===========================================================================
-# Offline — source data
+# Offline - source data
 # ===========================================================================
 
 def test_orders_csv_has_expected_shape():
@@ -70,7 +70,7 @@ def test_orders_csv_anomalies_are_still_there():
 
 def test_negative_prices_are_not_returns():
     """
-    The finding the brief never mentions: all 29 negative prices sit on NORMAL
+    All 29 negative prices sit on NORMAL
     invoices, none on a 'C' return. So they are a data-entry defect, and
     dropping them (silver R4) is correct. If they were returns, dropping them
     would have destroyed real business events.
@@ -102,7 +102,7 @@ def test_invoiceno_is_not_an_order_key():
 
     multi = sum(1 for d in dates_per_invoice.values() if len(d) > 1)
     ratio = multi / len(dates_per_invoice)
-    assert ratio > 0.80, f"only {ratio:.0%} multi-dated — the premise changed"
+    assert ratio > 0.80, f"only {ratio:.0%} multi-dated - the premise changed"
 
 
 @pytest.mark.parametrize("name,count", [("products.jsonl", 130),
@@ -134,7 +134,7 @@ def test_every_catalog_customer_is_american():
 
 
 # ===========================================================================
-# Offline — SQL source assertions
+# Offline - SQL source assertions
 # ===========================================================================
 
 def read_sql(name):
@@ -142,7 +142,7 @@ def read_sql(name):
 
 
 def read_sql_code(name):
-    """Same file with the comments removed — for tests that must not match
+    """Same file with the comments removed for tests that must not match
     prose. Several comments deliberately quote the anti-patterns they warn
     against, so a naive substring search on the raw file would fail."""
     return re.sub(r"--.*$", "", read_sql(name), flags=re.MULTILINE)
@@ -188,7 +188,7 @@ def test_no_not_in_anywhere():
     for path in sorted(SQL.glob("*.sql")):
         assert not re.search(r"\bNOT\s+IN\s*\(", read_sql_code(path.name),
                              re.IGNORECASE), \
-            f"{path.name} uses NOT IN — use LEFT JOIN ... IS NULL"
+            f"{path.name} uses NOT IN - use LEFT JOIN ... IS NULL"
 
 
 def test_silver_deduplicates_on_business_columns_only():
@@ -270,7 +270,7 @@ def test_analytics_counts_orders_as_invoice_plus_date():
 
 
 # ===========================================================================
-# Offline — no column is dropped between bronze and gold
+# Offline - no column is dropped between bronze and gold
 # ===========================================================================
 # The audit that produced these tests found the grain, the row counts and the
 # revenue intact, and several columns simply missing from gold. Nothing was
@@ -439,7 +439,7 @@ def test_convention_rows_line_up_with_the_dimension_they_extend():
 
 
 # ===========================================================================
-# Offline — repository shape
+# Offline - repository shape
 # ===========================================================================
 
 def test_no_hardcoded_account_id_or_bucket():
@@ -480,7 +480,7 @@ def test_terraform_forces_destroy_on_the_bucket():
 
 
 # ===========================================================================
-# AWS — requires a deployed lake
+# AWS - requires a deployed lake
 # ===========================================================================
 
 pytestmark_aws = pytest.mark.aws
@@ -639,7 +639,7 @@ def test_dimension_keys_are_unique():
 
 @pytest.mark.aws
 def test_no_unhandled_orphan_key():
-    """I4 — the graded criterion, literally."""
+    """I4 - the graded criterion, literally."""
     row = athena("""
         SELECT COUNT_IF(d.date_id IS NULL),
                COUNT_IF(p.product_id IS NULL),
@@ -654,7 +654,7 @@ def test_no_unhandled_orphan_key():
 
 @pytest.mark.aws
 def test_convention_rows_carry_the_expected_volume():
-    """I5 — 376 rows, $464,547.61, 5.00% of revenue."""
+    """I5 - 376 rows, $464,547.61, 5.00% of revenue."""
     row = athena("""
         SELECT COUNT_IF(product_id = -1),
                COUNT_IF(customer_id = -1),
@@ -699,7 +699,7 @@ def test_dim_client_carries_the_customer_attributes():
 
 @pytest.mark.aws
 def test_calendar_is_continuous():
-    """I6 — 91 days, no gap."""
+    """I6 - 91 days, no gap."""
     row = athena("""
         SELECT COUNT(*), DATE_DIFF('day', MIN(full_date), MAX(full_date)) + 1
         FROM dim_date
@@ -710,7 +710,7 @@ def test_calendar_is_continuous():
 @pytest.mark.aws
 def test_inner_join_would_have_cost_five_percent():
     """
-    Not an invariant — a demonstration. It asserts the exact size of the trap
+    Not an invariant - a demonstration. It asserts the exact size of the trap
     question 6 is about.
     """
     row = athena("""
@@ -729,7 +729,7 @@ def test_inner_join_would_have_cost_five_percent():
 def test_monthly_order_counts_are_additive():
     """
     Sum of monthly orders must equal the total. With COUNT(DISTINCT invoiceno)
-    it would not — 4,986 against 2,214.
+    it would not - 4,986 against 2,214.
     """
     monthly = athena("""
         SELECT COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar))

@@ -1473,7 +1473,7 @@ export const questions = {
   title: { en: "The six business questions", fr: "Les 6 questions métier" },
   note: {
     en: "The six queries below are the ones in <code>sql/05_analytics.sql</code>, shown without their comments. The figures beside each question are measured, not estimated.",
-    fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>, présentées sans leurs commentaires. Les chiffres associés à chaque question sont mesurés, pas estimés."
+    fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>."
   },
   source: "sql/05_analytics.sql",
   tableTitle: {

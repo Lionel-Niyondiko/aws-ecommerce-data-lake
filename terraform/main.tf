@@ -40,19 +40,16 @@ locals {
 }
 
 # ---------------------------------------------------------------------------
-# S3 — the data lake itself
+# S3 - the data lake itself
 # ---------------------------------------------------------------------------
 resource "aws_s3_bucket" "datalake" {
   bucket = local.bucket_name
 
-  # Lets Terraform empty the bucket before deleting it. Without this, destroy
+  # Note: Lets Terraform empty the bucket before deleting it. Without this, destroy
   # fails with BucketNotEmpty. Must be present from the FIRST apply so it is
   # recorded in state. Never set this on a production bucket.
   force_destroy = true
 }
-
-# Encryption (SSE-S3) and Block Public Access are on by default for any bucket
-# created since April 2023, so they are deliberately not declared here.
 
 # S3 has no folders. These zero-byte keys exist so the lake's structure is
 # visible in the console and explicit in code.
@@ -69,10 +66,9 @@ resource "aws_s3_object" "zones" {
 }
 
 # ---------------------------------------------------------------------------
-# Glue Data Catalog — metadata only, no data
+# Glue Data Catalog - metadata only, no data
 # ---------------------------------------------------------------------------
-# Tables are created in SQL (CREATE EXTERNAL TABLE, CTAS). Only the database
-# that holds them belongs to the infrastructure layer.
+# Tables are created in SQL (CREATE EXTERNAL TABLE, CTAS). 
 resource "aws_glue_catalog_database" "datalake" {
   name        = local.glue_database
   description = "E-commerce data lake catalog (bronze/silver/gold) - managed by Terraform"
@@ -83,11 +79,9 @@ resource "aws_glue_catalog_database" "datalake" {
 # every CTAS. Each query passes its own result location instead.
 
 # ---------------------------------------------------------------------------
-# AWS Budgets — cost guardrail
+# AWS Budgets - cost guardrail
 # ---------------------------------------------------------------------------
-# Account-wide, no cost_filter. Filtering by tag would require activating cost
-# allocation tags by hand in the Billing console, which contradicts the "no
-# manual console action" rule this lab is built on.
+# Account-wide, no cost_filter. 
 resource "aws_budgets_budget" "datalake" {
   name        = "${var.project_name}-monthly"
   budget_type = "COST"
@@ -110,10 +104,9 @@ resource "aws_budgets_budget" "datalake" {
 }
 
 # ---------------------------------------------------------------------------
-# SNS + CloudWatch — volume guardrail
+# SNS + CloudWatch - volume guardrail
 # ---------------------------------------------------------------------------
-# Budgets watches dollars; CloudWatch watches a technical metric. A runaway
-# script blows up storage long before it blows up the bill.
+# Budgets watches dollars; CloudWatch watches a technical metric. 
 resource "aws_sns_topic" "alerts" {
   name         = "${var.project_name}-alerts"
   display_name = "E-commerce Data Lake alerts"
@@ -125,7 +118,7 @@ resource "aws_sns_topic_subscription" "alerts_email" {
   endpoint  = var.budget_alert_email
 
   # Stays PendingConfirmation until the recipient clicks the link in their
-  # inbox. Terraform cannot do that for you. Until then, the alarm is silent.
+  # inbox. Until clicked, the alarm is silent.
 }
 
 resource "aws_cloudwatch_metric_alarm" "bucket_size" {
@@ -137,8 +130,6 @@ resource "aws_cloudwatch_metric_alarm" "bucket_size" {
 
   dimensions = {
     BucketName = aws_s3_bucket.datalake.id
-    # StorageType must be StandardStorage for BucketSizeBytes. AllStorageTypes
-    # only applies to NumberOfObjects and would silently match nothing.
     StorageType = "StandardStorage"
   }
 
