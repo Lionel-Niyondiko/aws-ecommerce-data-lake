@@ -2,7 +2,7 @@
 Two test suites in one file, separated by a marker.
 
     pytest -m "not aws"     no credentials, no cost, runs on every push
-    pytest -m aws           requires a deployed lake, runs after the e2e apply
+    pytest -m aws           AWS tests require a deployed lake and run after the manual AWS deployment.
 
 The offline tests read the SOURCE FILES and the SQL. They catch the mistakes
 that are expensive to discover on AWS: a forgotten skip.header.line.count, a

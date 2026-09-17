@@ -40,9 +40,12 @@ This is the recommended first step for reviewers and anyone evaluating the repos
 git clone https://github.com/Lionel-Niyondiko/aws-ecommerce-data-lake.git
 cd aws-ecommerce-data-lake
 
+uv sync
 make test
 make validate
 ```
+
+`uv sync` creates the local Python environment and installs the dependency versions defined by `pyproject.toml` and `uv.lock`.
 
 These commands do not create AWS resources and do not require AWS credentials.
 
@@ -118,8 +121,8 @@ Paths containing spaces can cause Bash and Make command resolution problems on W
 | Git | Current | `git --version` |
 | GNU Make | Current | `make --version` |
 | Terraform | ≥ 1.5 | `terraform version` |
-| Python | ≥ 3.9 | `python --version` |
-| pytest | Current | `pytest --version` |
+| Python | 3.13 | `uv run python --version` |
+| uv | Current | `uv --version` |
 | jq | Current | `jq --version` |
 
 ### AWS deployment
@@ -150,8 +153,9 @@ Run the following before the full AWS deployment:
 git --version
 make --version
 terraform version
-python --version
-pytest --version
+uv --version
+uv run python --version
+uv run pytest --version
 jq --version
 aws --version
 aws sts get-caller-identity
@@ -346,15 +350,6 @@ The Terraform configuration uses `force_destroy = true` for the data lake bucket
 
 The pipeline is short and linear. It runs in a few minutes, has no branching, no backfill requirement and no cross-dependency graph. A `Makefile` expresses the orchestration with less operational overhead.
 
-### Why no dbt?
-
-The SQL layer intentionally exposes the Athena CTAS transformations that the project is meant to teach. Adding dbt would hide part of that mechanism without adding enough value for this scope.
-
-### Why no remote Terraform backend?
-
-A remote backend would tie every clone to a shared or pre-existing state bucket. Each user should own the state for their own lab, so state stays local and is ignored by Git.
-
-Knowing when not to add a tool is part of the architecture exercise.
 
 ---
 
@@ -468,6 +463,8 @@ Every important number in this README is asserted by `tests/test_pipeline.py` an
 
 The source data is versioned intentionally, the Terraform provider lock file is committed, and the AWS infrastructure is disposable.
 
+Python dependencies are reproducible through `pyproject.toml` and the committed `uv.lock` file. Run `uv sync` after cloning to recreate the project environment with Python 3.13 and the pinned test dependency versions.
+
 The project has been validated through the complete local-to-AWS lifecycle:
 
 ```text
@@ -482,7 +479,7 @@ clone
 → empty Terraform state
 ```
 
-The project is designed so that a reviewer can start with zero-cost local validation and move to a complete AWS run only when they want to evaluate the cloud implementation.
+This project is designed so that anyone can start with zero-cost local validation.
 
 ---
 

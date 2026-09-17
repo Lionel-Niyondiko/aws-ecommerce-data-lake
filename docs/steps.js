@@ -224,7 +224,7 @@ export const meta = {
     [{ en: "Provisioning", fr: "Provisionnement" }, "Terraform"],
     [{ en: "Interface", fr: "Interface" }, { en: "Makefile, 11 targets", fr: "Makefile, 11 cibles" }],
     [{ en: "Orchestration", fr: "Orchestration" }, "run_pipeline.sh"],
-    [{ en: "Tests", fr: "Tests" }, { en: "23 offline + 15 on AWS", fr: "23 hors ligne + 15 sur AWS" }],
+    [{ en: "Tests", fr: "Tests" }, { en: "26 offline + 17 on AWS", fr: "26 hors ligne + 17 sur AWS" }],
     ["CI", { en: "GitHub Actions, offline checks",
              fr: "GitHub Actions, contrôles hors ligne" }],
     [{ en: "Region", fr: "Région" }, "us-east-1"],
@@ -414,7 +414,7 @@ export const howItRuns = {
                                     { en: "read-only", fr: "lecture seule" }] },
     { cmd: "make test-aws", steps: ["make", "pytest -m aws",
                                     { en: "Athena queries", fr: "requêtes Athena" },
-                                    { en: "15 assertions", fr: "15 assertions" }] }
+                                    { en: "17 assertions", fr: "17 assertions" }] }
   ],
 
   familiesTitle: { en: "The three families of command", fr: "Les trois familles de commandes" },
@@ -441,7 +441,7 @@ export const howItRuns = {
       note: { en: "Optional. None of these is part of the main pipeline.", fr: "Optionnelles. Aucune ne fait partie du pipeline principal." },
       items: [
         { cmd: "make quality",  what: { en: "Profile the raw data", fr: "Profiler les données brutes" } },
-        { cmd: "make test",     what: { en: "23 assertions, no AWS access", fr: "23 assertions, sans accès AWS" } },
+        { cmd: "make test",     what: { en: "26 assertions, no AWS access", fr: "26 assertions, sans accès AWS" } },
         { cmd: "make validate", what: { en: "Terraform format and syntax", fr: "Format et syntaxe Terraform" } },
         { cmd: "make fmt",      what: { en: "Reformat the Terraform files", fr: "Reformater les fichiers Terraform" } }
       ]
@@ -673,9 +673,11 @@ export const stages = [
 ];
 
 export const quickstart = {
-  title: { en: "The full sequence", fr: "La séquence complète" },
+  title: { en: "The full AWS sequence", fr: "La séquence AWS complète" },
   note: { en: "From the root of the project.", fr: "Depuis la racine du projet." },
-  cmd: `cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+  cmd: `uv sync
+
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
 make deploy
 make pipeline
@@ -703,23 +705,32 @@ export const steps = [
       fr: "Un échec peut provenir de deux endroits : l’environnement local ou le projet lui-même. Il est préférable d’éliminer d’abord les problèmes liés à l’environnement. Les vérifications hors ligne permettent de valider une partie importante du projet sans compte AWS et sans générer de coût."
     },
     run: {
-      cmd: "cp terraform/terraform.tfvars.example terraform/terraform.tfvars\nmake validate\nmake test",
+      cmd: "uv sync\nmake test\nmake validate",
       note: {
-        en: "Copy the example file, then fill in the required variables.",
-        fr: "Copier le fichier d’exemple, puis renseigner les variables nécessaires."
+        en: "Create the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>, then run the zero-cost local checks.",
+        fr: "Créer l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>, puis exécuter les contrôles locaux sans coût AWS."
       }
     },
-    flow: ["make validate", "terraform fmt -check", "terraform init -backend=false", "terraform validate"],
+    flow: [
+      "uv sync",
+      "make test",
+      { en: "26 offline assertions", fr: "26 assertions hors ligne" },
+      "make validate",
+      "terraform fmt -check",
+      "terraform init -backend=false",
+      "terraform validate"
+    ],
     whatHappens: {
-      en: "<code>make validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials. <code>make test</code> then runs the 23 assertions that read the source files and the SQL. They do not contact AWS.",
-      fr: "<code>make validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS. <code>make test</code> exécute ensuite les 23 assertions qui lisent les fichiers sources et le SQL. Elles ne contactent pas AWS."
+      en: "<code>uv sync</code> creates the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>. It applies the project’s Python 3.13 requirement and installs the locked test dependencies. <code>make test</code> then runs the 26 assertions that read the source files and the SQL. They do not contact AWS. <code>make validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials.",
+      fr: "<code>uv sync</code> crée l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>. Il applique la contrainte Python 3.13 du projet et installe les dépendances de test verrouillées. <code>make test</code> exécute ensuite les 26 assertions qui lisent les fichiers sources et le SQL. Elles ne contactent pas AWS. <code>make validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS."
     },
     check: {
       caption: { en: "Before going further", fr: "Avant d’aller plus loin" },
       rows: [
-        [{ en: "Required tools", fr: "Outils nécessaires" }, "terraform, aws, jq, python3"],
-        ["make test", "23 passed, 15 deselected"],
-        [{ en: "AWS identity", fr: "Identité AWS" }, "aws sts get-caller-identity"],
+        [{ en: "Required tools", fr: "Outils nécessaires" }, "git, make, terraform, uv, jq"],
+        ["uv run python --version", "Python 3.13.5"],
+        ["uv run pytest --version", "pytest 9.1.1"],
+        ["make test", "26 passed, 17 deselected"],
         [{ en: "AWS resources created", fr: "Ressources AWS créées" }, { en: "none at this stage", fr: "aucune à ce stade" }],
         [{ en: "Expected cost", fr: "Coût attendu" }, "$0.00"]
       ]
@@ -760,7 +771,13 @@ export const steps = [
       en: "The deployment is described entirely in the Terraform code. Nothing is created by hand in the AWS console, which is what makes the environment reviewable and reproducible.",
       fr: "Le déploiement est entièrement décrit dans le code Terraform. Rien n’est créé à la main dans la console AWS, ce qui rend l’environnement relisible et reproductible."
     },
-    run: { cmd: "make deploy" },
+    run: {
+      cmd: "aws sts get-caller-identity\ncp terraform/terraform.tfvars.example terraform/terraform.tfvars\nmake deploy",
+      note: {
+        en: "Confirm which AWS account is about to be billed, then copy the example file and fill in the required variables. Both belong to the deployment, which is why neither is needed for the local checks.",
+        fr: "Confirmer quel compte AWS va être facturé, puis copier le fichier d’exemple et renseigner les variables nécessaires. Les deux relèvent du déploiement : ils ne sont donc pas nécessaires aux contrôles locaux."
+      }
+    },
     flow: ["make deploy", "terraform init", "terraform apply"],
     whatHappens: {
       en: "Terraform creates the S3 bucket, the Glue Data Catalog, the IAM resources, the budgets, the SNS notifications and CloudWatch. <code>apply</code> is interactive: it prints the plan and waits for confirmation.",
@@ -1330,16 +1347,16 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       fr: "Cette séparation permet de tester rapidement la logique du projet, puis de vérifier séparément l’intégration avec AWS."
     },
     run: { cmd: "make test\nmake test-aws" },
-    flow: ["make test", "23 offline assertions", "make test-aws", "15 assertions on the deployed lake"],
+    flow: ["make test", "26 offline assertions", "make test-aws", "17 assertions on the deployed lake"],
     whatHappens: {
-      en: "<code>make test</code> runs 23 assertions that read the source files and the SQL text. <code>make test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
-      fr: "<code>make test</code> exécute 23 assertions qui lisent les fichiers sources et le texte SQL. <code>make test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
+      en: "<code>make test</code> runs 26 assertions that read the source files and the SQL text. <code>make test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
+      fr: "<code>make test</code> exécute 26 assertions qui lisent les fichiers sources et le texte SQL. <code>make test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
     },
     check: {
       caption: { en: "What the suite covers", fr: "Ce que couvre la suite" },
       rows: [
-        [{ en: "Offline assertions", fr: "Assertions hors ligne" }, "23"],
-        [{ en: "AWS assertions", fr: "Assertions AWS" }, "15"],
+        [{ en: "Offline assertions", fr: "Assertions hors ligne" }, "26"],
+        [{ en: "AWS assertions", fr: "Assertions AWS" }, "17"],
         [{ en: "Bronze fidelity", fr: "Fidélité Bronze" }, { en: "7,956 / 130 / 130", fr: "7 956 / 130 / 130" }],
         ["Silver", { en: "7,547 rows, 10 countries, 376 orphans kept", fr: "7 547 lignes, 10 pays, 376 orphelines conservées" }],
         ["Gold", { en: "no fan-out, no unhandled orphan key", fr: "aucun fan-out, aucune clé orpheline non traitée" }]
@@ -1473,7 +1490,7 @@ export const questions = {
   title: { en: "The six business questions", fr: "Les 6 questions métier" },
   note: {
     en: "The six queries below are the ones in <code>sql/05_analytics.sql</code>, shown without their comments. The figures beside each question are measured, not estimated.",
-    fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>."
+    fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>, présentées sans leurs commentaires. Les chiffres associés à chaque question sont mesurés, pas estimés."
   },
   source: "sql/05_analytics.sql",
   tableTitle: {
@@ -1703,7 +1720,10 @@ export const reproducibility = {
     ["Terraform", { en: "Infrastructure as Code", fr: "Infrastructure as Code" }],
     [{ en: "AWS resources", fr: "Ressources AWS" }, "S3, Glue, IAM, Budgets, SNS, CloudWatch"],
     [{ en: "Pipeline", fr: "Pipeline" }, { en: "Executable shell script", fr: "Script shell exécutable" }],
-    [{ en: "Tests", fr: "Tests" }, { en: "23 offline tests + 15 AWS tests", fr: "23 tests hors ligne + 15 tests AWS" }],
+    [{ en: "Python environment", fr: "Environnement Python" },
+     { en: "Reproducible Python 3.13 environment via pyproject.toml and uv.lock",
+       fr: "Environnement Python 3.13 reproductible via pyproject.toml et uv.lock" }],
+    [{ en: "Tests", fr: "Tests" }, { en: "26 offline tests + 17 AWS tests", fr: "26 tests hors ligne + 17 tests AWS" }],
     ["CI", { en: "GitHub Actions, offline only", fr: "GitHub Actions, hors ligne uniquement" }],
     [{ en: "AWS validation", fr: "Validation AWS" },
      { en: "manual, make test-aws", fr: "manuelle, make test-aws" }],

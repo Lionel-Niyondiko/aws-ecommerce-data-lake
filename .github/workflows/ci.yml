@@ -1,14 +1,3 @@
-# ===========================================================================
-# ci.yml — runs on every push. Touches no AWS account, costs nothing.
-# ===========================================================================
-# Everything here can be checked without deploying: syntax, formatting, the
-# source-level assertions in tests/, and three guards that encode the rules
-# this project would otherwise only state in prose.
-#
-# The split matters. A pipeline that needs credentials to tell you a bracket is
-# missing is a pipeline nobody runs on a branch.
-# ===========================================================================
-
 name: ci
 
 on:
@@ -19,12 +8,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   terraform:
     name: terraform
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -33,8 +27,6 @@ jobs:
       - name: fmt
         run: terraform -chdir=terraform fmt -check -recursive -diff
 
-      # -backend=false: init without touching a backend or any credentials.
-      # This is what makes validate runnable on a fork with no AWS access.
       - name: init
         run: terraform -chdir=terraform init -backend=false -input=false
 
@@ -43,81 +35,74 @@ jobs:
 
       - name: tflint
         uses: terraform-linters/setup-tflint@v4
+
       - run: tflint --chdir=terraform --format compact
 
   shell:
     name: shell
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
       - name: shellcheck
         run: shellcheck scripts/*.sh
 
   tests:
     name: tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4    # v10.1.0
         with:
-          python-version: "3.12"
-          cache: pip
+          python-version: "3.13"
+          enable-cache: true
 
-      - run: pip install -r tests/requirements.txt
+      - name: Install dependencies
+        run: uv sync --locked
 
-      # -m "not aws" selects the offline half of tests/test_pipeline.py: the
-      # source-data assertions and the SQL source assertions.
-      - name: pytest
-        run: pytest -m "not aws" -q
+      - name: Tests
+        run: uv run pytest -m "not aws" -q
 
   guards:
     name: guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      # Both guards strip SQL comments first. The comments in these files
-      # deliberately quote the anti-patterns they warn against, so grepping the
-      # raw text would fail on the very sentence explaining the rule.
-
-      # 1. Medallion guard. Gold derives from silver only. A single reference
-      #    to a *_raw table would mean the layering is decorative.
-      - name: gold must not read bronze
+      - name: Gold layer
         run: |
-          if sed 's/--.*//' sql/04_gold.sql | grep -in '_raw'; then
+          if sed 's/--.*//' sql/04_gold.sql | grep -ni '_raw'; then
             echo "::error file=sql/04_gold.sql::gold references a bronze table"
             exit 1
           fi
-          echo "OK — gold derives from silver only."
 
-      # 2. Anti-join guard. NOT IN against a nullable column returns NULL, so
-      #    orphan detection reports zero on a dataset with 376 orphans.
-      - name: no NOT IN in the SQL
+      - name: SQL anti-join
         run: |
           for f in sql/*.sql; do
-            if sed 's/--.*//' "$f" | grep -inE '\bNOT +IN *\('; then
+            if sed 's/--.*//' "$f" | grep -niE '\bNOT +IN *\('; then
               echo "::error file=$f::use LEFT JOIN ... IS NULL, not NOT IN"
               exit 1
             fi
           done
-          echo "OK — every anti-join uses LEFT JOIN ... IS NULL."
 
-      # 3. Secret guard. A 12-digit account id or an AKIA key in a public
-      #    repository is the one mistake with a cost measured in dollars.
-      - name: no credentials, no account id
+      - name: Secrets and account IDs
         run: |
-          if grep -rnE 'AKIA[0-9A-Z]{16}' --include='*' . ; then
+          if git grep -nE 'AKIA[0-9A-Z]{16}'; then
             echo "::error::an AWS access key id is committed"
             exit 1
           fi
-          if grep -rnE '\b[0-9]{12}\b' --include='*.tf' --include='*.sql' . \
-             | grep -v '123456789012'; then
+
+          if git grep -nE '(^|[^0-9])[0-9]{12}([^0-9]|$)' -- '*.tf' '*.sql' | grep -vF '123456789012'; then
             echo "::error::a hard-coded AWS account id is committed"
             exit 1
           fi
-          if [ -f terraform/terraform.tfvars ]; then
+
+          if git ls-files --error-unmatch terraform/terraform.tfvars >/dev/null 2>&1; then
             echo "::error::terraform.tfvars is committed"
             exit 1
           fi
-          echo "OK — nothing sensitive committed."
