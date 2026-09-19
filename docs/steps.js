@@ -697,8 +697,8 @@ export const steps = [
     title: { en: "Prepare the workstation", fr: "Préparer le poste de travail" },
     duration: "~5 min",
     objective: {
-      en: "Before spending anything on AWS, the first objective is to verify that the local environment and the project are ready.",
-      fr: "Avant toute dépense AWS, le premier objectif est de vérifier que l’environnement local et le projet sont prêts."
+      en: "the main objective is to verify that the local environment and the project are ready.",
+      fr: "l'objectif principal est de vérifier que l’environnement local et le projet sont prêts."
     },
     why: {
       en: "A failure can come from two places: the local environment, or the project itself. It is better to rule out the environment first. The offline checks validate a significant part of the project without an AWS account and without generating any cost.",
