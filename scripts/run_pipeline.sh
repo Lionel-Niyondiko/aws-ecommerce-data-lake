@@ -164,17 +164,19 @@ run_sql_file() {
     done <<< "$prepared"
 
     if [[ "$mode" == "analytics" ]]; then
-        uv run python "$ROOT/scripts/generate_analytics_report.py" "$report_dir" >/dev/null
+        uv run --no-project python "$ROOT/scripts/generate_analytics_report.py" "$report_dir" >/dev/null
 
         local history_s3 latest_s3
         history_s3="${ANALYTICS_OUT%/}/${run_stamp}/"
         latest_s3="${ANALYTICS_OUT%/}/latest/"
 
+        aws s3 cp "$report_dir/report.html" "${history_s3}report.html" --quiet
         aws s3 cp "$report_dir/report.md"   "${history_s3}report.md"   --quiet
         aws s3 cp "$report_dir/report.json" "${history_s3}report.json" --quiet
         aws s3 cp "$report_dir/report.csv"  "${history_s3}report.csv"  --quiet
         aws s3 sync "$report_dir/raw" "${history_s3}raw" --quiet
 
+        aws s3 cp "$report_dir/report.html" "${latest_s3}report.html" --quiet
         aws s3 cp "$report_dir/report.md"   "${latest_s3}report.md"   --quiet
         aws s3 cp "$report_dir/report.json" "${latest_s3}report.json" --quiet
         aws s3 cp "$report_dir/report.csv"  "${latest_s3}report.csv"  --quiet
@@ -182,12 +184,14 @@ run_sql_file() {
         aws s3 sync "$report_dir/raw" "${latest_s3}raw" --quiet
 
         mkdir -p "$ROOT/reports"
+        cp "$report_dir/report.html" "$ROOT/reports/report.html"
         cp "$report_dir/report.md" "$ROOT/reports/analytics_latest.md"
         cp "$report_dir/report.json" "$ROOT/reports/analytics_latest.json"
         cp "$report_dir/report.csv" "$ROOT/reports/analytics_latest.csv"
 
         ok "$n statements executed. Report generated and uploaded."
-        info "Local     $report_dir/report.md"
+        info "Local     $ROOT/reports/report.html"
+        info "Run       $report_dir/report.html"
         info "S3 latest ${latest_s3}"
         info "S3 run    ${history_s3}"
     else

@@ -55,3 +55,7 @@ destroy:
 docs:
 	@echo "http://localhost:8000"
 	@cd docs && uv run python -m http.server 8000
+
+analytics-view:
+	@echo "http://localhost:8001/report.html"
+	@cd reports && uv run --no-project python -m http.server 8001

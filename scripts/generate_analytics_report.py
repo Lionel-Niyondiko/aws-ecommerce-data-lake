@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a deterministic Markdown/JSON/CSV report from Athena result JSON files."""
+"""Build deterministic HTML/Markdown/JSON/CSV reports from Athena result JSON files."""
 from __future__ import annotations
 
 import csv
@@ -135,6 +135,106 @@ def make_summary(results: dict[str, tuple[list[str], list[list[str]]]]) -> list[
     return lines
 
 
+def html_escape(value: Any) -> str:
+    import html
+    return html.escape(str(value), quote=True)
+
+
+def html_table(headers: list[str], rows: list[list[str]]) -> str:
+    if not headers:
+        return '<p class="empty">Aucun résultat.</p>'
+    head = "".join(f"<th>{html_escape(h)}</th>" for h in headers)
+    body = []
+    for row in rows:
+        cells = "".join(f"<td>{html_escape(v)}</td>" for v in row)
+        body.append(f"<tr>{cells}</tr>")
+    return '<div class="table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + ''.join(body) + '</tbody></table></div>'
+
+
+def make_html(generated_at: str, questions: dict[str, list[dict[str, Any]]], summary: list[str]) -> str:
+    import html
+
+    summary_html = []
+    for line in summary:
+        text = html.escape(line).replace("**", "")
+        if text.startswith("- "):
+            text = text[2:]
+        summary_html.append(f"<li>{text}</li>")
+
+    sections = []
+    for qnum in ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"]:
+        entries = questions.get(qnum, [])
+        blocks = []
+        for entry in entries:
+            blocks.append(
+                f'<article class="query">'
+                f'<div class="query-title"><span class="query-id">{html_escape(entry["id"])}</span>'
+                f'<h3>{html_escape(entry["titre"])}</h3></div>'
+                f'{html_table(entry["colonnes"], entry["lignes"])}'
+                f'</article>'
+            )
+        content = ''.join(blocks) if blocks else '<p class="empty">Aucun résultat.</p>'
+        sections.append(
+            f'<section id="{qnum.lower()}"><div class="section-head">'
+            f'<span class="section-number">{qnum}</span><h2>Question métier {qnum[1:]}</h2>'
+            f'</div>{content}</section>'
+        )
+
+    return f'''<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rapport analytique e-commerce</title>
+<style>
+:root {{ --ink:#1d1d1b; --muted:#6b6963; --line:#dedbd3; --paper:#f7f6f2; --panel:#fff; --accent:#ee4b23; --soft:#f0eee8; }}
+* {{ box-sizing:border-box; }}
+html {{ scroll-behavior:smooth; }}
+body {{ margin:0; background:var(--paper); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.55; }}
+main {{ max-width:1180px; margin:0 auto; padding:56px 28px 90px; }}
+header {{ border-bottom:1px solid var(--line); padding-bottom:34px; margin-bottom:34px; }}
+.eyebrow {{ font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }}
+h1 {{ margin:12px 0 8px; font-size:clamp(34px,5vw,58px); line-height:1.02; letter-spacing:-.04em; font-weight:700; }}
+.subtitle {{ max-width:720px; color:var(--muted); font-size:17px; }}
+.meta {{ margin-top:18px; color:var(--muted); font-size:13px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }}
+.summary {{ background:var(--panel); border:1px solid var(--line); padding:24px 26px; margin-bottom:46px; }}
+.summary h2 {{ margin:0 0 14px; font-size:19px; }}
+.summary ul {{ margin:0; padding-left:20px; }}
+.summary li {{ margin:8px 0; }}
+section {{ margin:0 0 54px; scroll-margin-top:24px; }}
+.section-head {{ display:flex; align-items:baseline; gap:14px; border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:20px; }}
+.section-number {{ font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }}
+h2 {{ margin:0; font-size:28px; letter-spacing:-.025em; }}
+.query {{ background:var(--panel); border:1px solid var(--line); margin:0 0 18px; overflow:hidden; }}
+.query-title {{ display:flex; gap:12px; align-items:center; padding:18px 20px; border-bottom:1px solid var(--line); background:var(--soft); }}
+.query-title h3 {{ margin:0; font-size:16px; font-weight:650; }}
+.query-id {{ font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }}
+.table-wrap {{ overflow:auto; }}
+table {{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }}
+th,td {{ padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; white-space:nowrap; }}
+th {{ background:#fbfaf7; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); position:sticky; top:0; }}
+tr:last-child td {{ border-bottom:0; }}
+.empty {{ padding:20px; color:var(--muted); }}
+footer {{ border-top:1px solid var(--line); padding-top:18px; color:var(--muted); font-size:12px; }}
+@media (max-width:700px) {{ main {{ padding:34px 16px 60px; }} .summary {{ padding:18px; }} h2 {{ font-size:23px; }} }}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">AWS E-commerce Data Lake · Analytics</div>
+  <h1>Rapport analytique e-commerce</h1>
+  <div class="subtitle">Restitution des six questions métier exécutées dans Amazon Athena. Les tableaux ci-dessous proviennent directement des résultats des requêtes.</div>
+  <div class="meta">Généré le {html_escape(generated_at)}</div>
+</header>
+<div class="summary"><h2>Synthèse factuelle</h2><ul>{''.join(summary_html) if summary_html else '<li>Aucune synthèse disponible.</li>'}</ul></div>
+{''.join(sections)}
+<footer>Source : <code>sql/05_analytics.sql</code> · Résultats Athena archivés avec cette exécution.</footer>
+</main>
+</body>
+</html>
+'''
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("Usage: generate_analytics_report.py <report_directory>", file=sys.stderr)
@@ -204,7 +304,8 @@ def main() -> int:
             md.extend([f"### {entry['titre']}", "", table(entry["colonnes"], entry["lignes"]), ""])
 
     (report_dir / "report.md").write_text("\n".join(md), encoding="utf-8")
-    print(report_dir / "report.md")
+    (report_dir / "report.html").write_text(make_html(generated_at, questions, make_summary(results)), encoding="utf-8")
+    print(report_dir / "report.html")
     return 0
 
 

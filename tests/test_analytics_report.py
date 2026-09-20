@@ -48,6 +48,7 @@ def test_generator_reads_results_from_raw_directory(tmp_path):
     report_md = (report_dir / "report.md").read_text(encoding="utf-8")
     report_json = json.loads((report_dir / "report.json").read_text(encoding="utf-8"))
     report_csv = (report_dir / "report.csv").read_text(encoding="utf-8-sig")
+    report_html = (report_dir / "report.html").read_text(encoding="utf-8")
 
     assert "125430.50" in report_md
     assert "France" in report_md
@@ -55,6 +56,9 @@ def test_generator_reads_results_from_raw_directory(tmp_path):
     assert report_json["questions"]["Q1"]
     assert any(item["id"] == "q1_total" for item in report_json["questions"]["Q1"])
     assert "q1_total" in report_csv
+    assert "Rapport analytique e-commerce" in report_html
+    assert "France" in report_html
+    assert "<table>" in report_html
 
 
 def test_generator_ignores_non_athena_json_at_report_root(tmp_path):
