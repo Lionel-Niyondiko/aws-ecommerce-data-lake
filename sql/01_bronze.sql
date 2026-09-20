@@ -1,13 +1,4 @@
--- ===========================================================================
 -- BRONZE - external tables over the raw files, exactly as delivered
--- ===========================================================================
--- Bronze answers one question: what did the source send, and when?
---
--- EXTERNAL means the data belongs to S3, not to Athena: DROP TABLE removes the
--- definition, never the files. That, plus partitioning by ingestion date and
--- the fact that no CTAS ever writes here, is what makes bronze immutable by
--- construction.
--- ===========================================================================
 
 CREATE EXTERNAL TABLE IF NOT EXISTS orders_raw (
   invoiceno   string,
@@ -19,7 +10,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS orders_raw (
   country     string
 )
 PARTITIONED BY (
-  ingestion_date string   -- technical date: when it ARRIVED, not when it sold
+  ingestion_date string
 )
 ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
 WITH SERDEPROPERTIES (
@@ -29,13 +20,8 @@ WITH SERDEPROPERTIES (
 STORED AS TEXTFILE
 LOCATION 's3://${BUCKET}/bronze/orders/'
 TBLPROPERTIES (
-  -- Without this the header row becomes data and every COUNT is off by one.
   'skip.header.line.count' = '1'
 );
-
-
--- Nested structures are kept as struct/array. Flattening is a transformation,
--- so it belongs to silver. 
 CREATE EXTERNAL TABLE IF NOT EXISTS products_raw (
   id                   int,
   title                string,
@@ -59,10 +45,6 @@ PARTITIONED BY (ingestion_date string)
 ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
 WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
 LOCATION 's3://${BUCKET}/bronze/products/';
-
-
--- `role` is a reserved word: backticks in DDL, double quotes in SELECT.
-
 CREATE EXTERNAL TABLE IF NOT EXISTS users_raw (
   id         int,
   firstname  string,
@@ -102,29 +84,17 @@ PARTITIONED BY (ingestion_date string)
 ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
 WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
 LOCATION 's3://${BUCKET}/bronze/users/';
-
-
--- Note: A partitioned table only reads partitions registered in Glue. Files on S3
--- plus a created table plus zero rows means this step was skipped. 
 MSCK REPAIR TABLE orders_raw;
 MSCK REPAIR TABLE products_raw;
 MSCK REPAIR TABLE users_raw;
 
+-- Verification
 
--- ---------------------------------------------------------------------------
--- Verification: bronze must be faithful to the source
--- ---------------------------------------------------------------------------
--- Expected: 7956 / 130 / 130
 SELECT 'orders_raw' AS source, COUNT(*) AS rows, 7956 AS expected FROM orders_raw
 UNION ALL SELECT 'products_raw', COUNT(*), 130 FROM products_raw
 UNION ALL SELECT 'users_raw',    COUNT(*), 130 FROM users_raw
 ORDER BY 1;
-
--- Header correctly skipped? Expected 0.
 SELECT COUNT(*) AS header_leaked FROM orders_raw WHERE invoiceno = 'InvoiceNo';
-
--- Nothing lost, nothing typed away. Expected:
--- 7956 | 116 | 157 | 36 | 29 | 74 | 243
 SELECT
     COUNT(*)                                             AS total,
     COUNT_IF(quantity = '')                              AS quantity_blank,
@@ -134,10 +104,7 @@ SELECT
     COUNT_IF(TRY_CAST(unitprice AS double) <= 0)         AS price_zero_or_negative,
     COUNT_IF(invoiceno LIKE 'C%')                        AS returns
 FROM orders_raw;
-
--- Nested typing works: dotted access reaches four levels deep.
 SELECT id, title, brand, dimensions.width, CARDINALITY(tags) AS tag_count
 FROM products_raw LIMIT 3;
-
 SELECT id, address.city, address.coordinates.lat, company.address.country
 FROM users_raw LIMIT 3;

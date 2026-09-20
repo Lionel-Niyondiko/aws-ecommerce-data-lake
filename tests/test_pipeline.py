@@ -1,19 +1,7 @@
 """
-Two test suites in one file, separated by a marker.
-
     pytest -m "not aws"     no credentials, no cost, runs on every push
     pytest -m aws           AWS tests require a deployed lake and run after the manual AWS deployment.
 
-The offline tests read the SOURCE FILES and the SQL. They catch the mistakes
-that are expensive to discover on AWS: a forgotten skip.header.line.count, a
-NOT IN that silently swallows orphans, a reference to bronze inside gold.
-
-The aws tests read the DEPLOYED TABLES and assert the numbers the offline
-profiling predicted. They are the only proof that the pipeline actually did
-what the SQL says it does.
-
-Numbers are hard-coded on purpose. A test that recomputes the expected value
-with the same logic as the code under test proves nothing.
 """
 
 import csv

@@ -4,7 +4,7 @@
 TF := terraform -chdir=terraform
 
 help:
-	@echo "E-commerce Data Lake on AWS"
+	@echo "Helper: E-commerce Data Lake on AWS"
 	@echo ""
 	@echo "  make validate   Check Terraform formatting and syntax (no AWS)"
 	@echo "  make test       Run tests that need no AWS credentials"
