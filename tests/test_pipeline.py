@@ -17,7 +17,6 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 SQL = ROOT / "sql"
 
-
 # ===========================================================================
 # Offline - source data
 # ===========================================================================
@@ -31,7 +30,6 @@ def test_orders_csv_has_expected_shape():
         "InvoiceNo", "ProductID", "Quantity",
         "InvoiceDate", "UnitPrice", "CustomerID", "Country",
     ]
-
 
 def test_orders_csv_anomalies_are_still_there():
     """
@@ -55,7 +53,6 @@ def test_orders_csv_anomalies_are_still_there():
     assert returns == 243
     assert len(countries) == 39, "39 raw spellings collapse to 10 countries"
 
-
 def test_negative_prices_are_not_returns():
     """
     All 29 negative prices sit on NORMAL
@@ -71,7 +68,6 @@ def test_negative_prices_are_not_returns():
                 and float(r["UnitPrice"]) < 0]
     assert len(negative) == 29
     assert all(not r["InvoiceNo"].startswith("C") for r in negative)
-
 
 def test_invoiceno_is_not_an_order_key():
     """
@@ -92,14 +88,12 @@ def test_invoiceno_is_not_an_order_key():
     ratio = multi / len(dates_per_invoice)
     assert ratio > 0.80, f"only {ratio:.0%} multi-dated - the premise changed"
 
-
 @pytest.mark.parametrize("name,count", [("products.jsonl", 130),
                                         ("users.jsonl", 130)])
 def test_jsonl_files_parse_line_by_line(name, count):
     with open(DATA / name, encoding="utf-8") as fh:
         objects = [json.loads(line) for line in fh if line.strip()]
     assert len(objects) == count
-
 
 def test_brand_is_absent_from_62_products():
     """
@@ -110,7 +104,6 @@ def test_brand_is_absent_from_62_products():
         products = [json.loads(line) for line in fh if line.strip()]
     assert sum(1 for p in products if "brand" not in p) == 62
 
-
 def test_every_catalog_customer_is_american():
     """
     So revenue by country must come from the FACT (shipping country). Using
@@ -120,7 +113,6 @@ def test_every_catalog_customer_is_american():
         users = [json.loads(line) for line in fh if line.strip()]
     assert {u["address"]["country"] for u in users} == {"United States"}
 
-
 # ===========================================================================
 # Offline - SQL source assertions
 # ===========================================================================
@@ -128,18 +120,15 @@ def test_every_catalog_customer_is_american():
 def read_sql(name):
     return (SQL / name).read_text(encoding="utf-8")
 
-
 def read_sql_code(name):
     """Same file with the comments removed for tests that must not match
     prose. Several comments deliberately quote the anti-patterns they warn
     against, so a naive substring search on the raw file would fail."""
     return re.sub(r"--.*$", "", read_sql(name), flags=re.MULTILINE)
 
-
 def test_bronze_skips_the_csv_header():
     """Without this, the header becomes a data row and every COUNT is off."""
     assert "skip.header.line.count" in read_sql("01_bronze.sql")
-
 
 def test_bronze_types_the_csv_as_string():
     """
@@ -152,12 +141,10 @@ def test_bronze_types_the_csv_as_string():
         assert re.search(rf"\b{column}\s+string", block), \
             f"{column} must be string in bronze"
 
-
 def test_bronze_repairs_every_partitioned_table():
     ddl = read_sql("01_bronze.sql")
     for table in ("orders_raw", "products_raw", "users_raw"):
         assert f"MSCK REPAIR TABLE {table}" in ddl
-
 
 def test_gold_never_reads_bronze():
     """
@@ -165,7 +152,6 @@ def test_gold_never_reads_bronze():
     as a grep so it fails fast, but the assertion belongs here too.
     """
     assert "_raw" not in read_sql_code("04_gold.sql").lower()
-
 
 def test_no_not_in_anywhere():
     """
@@ -178,7 +164,6 @@ def test_no_not_in_anywhere():
                              re.IGNORECASE), \
             f"{path.name} uses NOT IN - use LEFT JOIN ... IS NULL"
 
-
 def test_silver_deduplicates_on_business_columns_only():
     """
     SELECT DISTINCT * would include ingestion_date, so a second ingestion would
@@ -187,7 +172,6 @@ def test_silver_deduplicates_on_business_columns_only():
     silver = read_sql("03_silver.sql")
     assert "SELECT DISTINCT *" not in silver
     assert "MAX(ingestion_date)" in silver
-
 
 def test_silver_maps_countries_with_else_null():
     """
@@ -198,7 +182,6 @@ def test_silver_maps_countries_with_else_null():
     assert "ELSE NULL" in silver
     assert "unmapped_country" in silver
 
-
 def test_fact_uses_left_join_not_inner():
     """The 5%-of-revenue decision. INNER JOIN would drop 376 rows silently."""
     gold = read_sql_code("04_gold.sql")
@@ -206,7 +189,6 @@ def test_fact_uses_left_join_not_inner():
     fact = fact[:fact.index(";", fact.index("FROM orders_clean"))]
     assert fact.count("LEFT JOIN") == 2
     assert not re.search(r"\n\s*(INNER\s+)?JOIN\b", fact)
-
 
 def test_convention_keys_are_negative():
     """
@@ -218,7 +200,6 @@ def test_convention_keys_are_negative():
     assert "-1" in gold and "-2" in gold
     assert "9999" not in gold
 
-
 def test_ctas_puts_partition_columns_last():
     """
     Athena requires it, and the error message when you get it wrong does not
@@ -226,9 +207,9 @@ def test_ctas_puts_partition_columns_last():
     projected columns before FROM must be year then month.
     """
     tail_pattern = re.compile(
-        r"(?:AS\s+year|\.year)\s*,\s*\n"     # ... year,
-        r"[^\n]*(?:AS\s+month|\.month)\s*\n" # ... month
-        r"\s*FROM\b",                        # FROM
+        r"(?:AS\s+year|\.year)\s*,\s*\n"
+        r"[^\n]*(?:AS\s+month|\.month)\s*\n"
+        r"\s*FROM\b",
         re.IGNORECASE)
 
     for name in ("03_silver.sql", "04_gold.sql"):
@@ -240,7 +221,6 @@ def test_ctas_puts_partition_columns_last():
             assert tail_pattern.search(statement), \
                 f"{name}: partition columns must be last in the SELECT"
 
-
 def test_analytics_excludes_convention_rows_from_rankings():
     """
     Q2 and Q5 must exclude them: 'Unknown product' would rank 3rd by revenue,
@@ -250,28 +230,18 @@ def test_analytics_excludes_convention_rows_from_rankings():
     assert "product_id <> -1" in analytics
     assert "customer_id > 0" in analytics
 
-
 def test_analytics_counts_orders_as_invoice_plus_date():
     """COUNT(DISTINCT invoiceno) alone overcounts by 125% across months."""
     analytics = read_sql("05_analytics.sql")
     assert "invoiceno || '|' || CAST(f.date_id AS varchar)" in analytics
 
-
 # ===========================================================================
 # Offline - no column is dropped between bronze and gold
 # ===========================================================================
-# The audit that produced these tests found the grain, the row counts and the
-# revenue intact, and several columns simply missing from gold. Nothing was
-# wrong; information was just absent, with nothing in the file to say whether
-# that was a decision or an oversight. These tests turn that ambiguity into a
-# failure: every bronze column must land somewhere, under its own name, a
-# documented rename, or a documented flattening.
-
 
 def _strip_string_literals(text):
     """A literal may contain a comma or the word AS. Blank them first."""
     return re.sub(r"'[^']*'", "''", text)
-
 
 def _aliases(projection):
     """
@@ -312,14 +282,12 @@ def _aliases(projection):
         names.append(name.strip().strip('"').split(".")[-1].strip('"').lower())
     return names
 
-
 def _projection(sql_code, create_marker, from_marker):
     """The first SELECT of a CTAS, read as a list of output column names."""
     body = sql_code[sql_code.index(create_marker):]
     body = body[body.index(") AS"):]
     body = body[body.index("SELECT") + len("SELECT"):body.index(from_marker)]
     return _aliases(body)
-
 
 def _bronze_columns(table):
     """
@@ -334,9 +302,6 @@ def _bronze_columns(table):
     columns = re.findall(r"^  (`?\w+`?)\s+\S", block, re.MULTILINE)
     return [c.strip("`") for c in columns] + ["ingestion_date"]
 
-
-# bronze column -> the silver column(s) it becomes. Anything absent from the
-# map has to survive under its own name.
 PRODUCT_ORIGINS = {
     "id":                   ["product_id"],
     "price":                ["catalog_price"],
@@ -349,7 +314,6 @@ PRODUCT_ORIGINS = {
     "minimumorderquantity": ["minimum_order_quantity"],
     "ingestion_date":       ["source_ingestion_date"],
 }
-# computed in silver, with no bronze column behind it
 PRODUCT_COMPUTED = {"discounted_price"}
 
 USER_ORIGINS = {
@@ -365,13 +329,11 @@ USER_ORIGINS = {
 }
 USER_COMPUTED = set()
 
-
 def _expected_silver(bronze_columns, origins, computed):
     expected = set(computed)
     for column in bronze_columns:
         expected.update(origins.get(column, [column]))
     return expected
-
 
 def test_products_reach_gold_with_nothing_dropped_on_the_way():
     """
@@ -389,7 +351,6 @@ def test_products_reach_gold_with_nothing_dropped_on_the_way():
     assert set(gold) == set(silver) | {"is_unknown"}
     assert gold[-1] == "is_unknown", "the convention flag stays last"
 
-
 def test_users_reach_gold_with_nothing_dropped_on_the_way():
     """The mirror of the test above, on the customer side."""
     silver = _projection(read_sql_code("03_silver.sql"),
@@ -401,7 +362,6 @@ def test_users_reach_gold_with_nothing_dropped_on_the_way():
         _bronze_columns("users_raw"), USER_ORIGINS, USER_COMPUTED)
     assert set(gold) == set(silver) | {"customer_type"}
     assert gold[-1] == "customer_type", "the row-type flag stays last"
-
 
 def test_convention_rows_line_up_with_the_dimension_they_extend():
     """
@@ -425,7 +385,6 @@ def test_convention_rows_line_up_with_the_dimension_they_extend():
                 f"{create}: a convention row is out of step with the "
                 f"main SELECT ({len(names)} columns against {len(main)})")
 
-
 # ===========================================================================
 # Offline - repository shape
 # ===========================================================================
@@ -447,7 +406,6 @@ def test_no_hardcoded_account_id_or_bucket():
         assert not re.search(r"\b\d{12}\b", code), \
             f"{path.name}: hard-coded account id"
 
-
 def test_gitignore_blocks_state_and_tfvars():
     """
     terraform.tfvars holds the alert email; state can hold anything. Neither
@@ -457,7 +415,6 @@ def test_gitignore_blocks_state_and_tfvars():
     for pattern in ("*.tfstate", "terraform/terraform.tfvars", ".terraform/"):
         assert pattern in ignored
 
-
 def test_terraform_forces_destroy_on_the_bucket():
     """
     'terraform destroy leaves nothing behind' is a graded criterion, and S3
@@ -466,20 +423,17 @@ def test_terraform_forces_destroy_on_the_bucket():
     assert "force_destroy = true" in (ROOT / "terraform" / "main.tf").read_text(
         encoding="utf-8")
 
-
 # ===========================================================================
 # AWS - requires a deployed lake
 # ===========================================================================
 
 pytestmark_aws = pytest.mark.aws
 
-
 def tf_output(name):
     out = subprocess.run(
         ["terraform", f"-chdir={ROOT / 'terraform'}", "output", "-raw", name],
         capture_output=True, text=True, check=True)
     return out.stdout.strip()
-
 
 def athena(sql):
     """Run one query, return rows as lists of strings (header stripped)."""
@@ -518,13 +472,11 @@ def athena(sql):
          "--output", "json"],
         capture_output=True, text=True, check=True, env=env).stdout)
 
-    rows = payload["ResultSet"]["Rows"][1:]  # drop the header row
+    rows = payload["ResultSet"]["Rows"][1:]
     return [[cell.get("VarCharValue") for cell in r["Data"]] for r in rows]
-
 
 def scalar(sql):
     return athena(sql)[0][0]
-
 
 @pytest.mark.aws
 def test_bronze_is_faithful_to_the_sources():
@@ -534,13 +486,11 @@ def test_bronze_is_faithful_to_the_sources():
     assert int(scalar(
         "SELECT COUNT(*) FROM orders_raw WHERE invoiceno = 'InvoiceNo'")) == 0
 
-
 @pytest.mark.aws
 def test_silver_row_count_and_revenue():
     assert int(scalar("SELECT COUNT(*) FROM orders_clean")) == 7547
     assert float(scalar(
         "SELECT ROUND(SUM(line_amount), 2) FROM orders_clean")) == 9284872.42
-
 
 @pytest.mark.aws
 def test_silver_left_no_anomaly_behind():
@@ -554,12 +504,10 @@ def test_silver_left_no_anomaly_behind():
     """)[0]
     assert [int(v) for v in row] == [0, 0, 0, 0, 0]
 
-
 @pytest.mark.aws
 def test_silver_collapsed_39_spellings_into_10_countries():
     assert int(scalar(
         "SELECT COUNT(DISTINCT country) FROM orders_clean")) == 10
-
 
 @pytest.mark.aws
 def test_silver_kept_the_orphans():
@@ -576,12 +524,10 @@ def test_silver_kept_the_orphans():
         LEFT JOIN users_clean    u ON u.customer_id = o.customer_id
     """)) == 376
 
-
 @pytest.mark.aws
 def test_gold_preserved_every_silver_row():
     """I1."""
     assert int(scalar("SELECT COUNT(*) FROM fact_ventes")) == 7547
-
 
 @pytest.mark.aws
 def test_declared_grain_is_the_real_grain():
@@ -595,7 +541,6 @@ def test_declared_grain_is_the_real_grain():
                                 || '|' || CAST(invoice_timestamp AS varchar))
         FROM fact_ventes
     """)) == 0
-
 
 @pytest.mark.aws
 def test_no_join_fan_out():
@@ -614,7 +559,6 @@ def test_no_join_fan_out():
     assert int(row[0]) == 7547
     assert float(row[1]) == 9284872.42
 
-
 @pytest.mark.aws
 def test_dimension_keys_are_unique():
     """I3."""
@@ -623,7 +567,6 @@ def test_dimension_keys_are_unique():
                        ("dim_client", "customer_id")):
         assert int(scalar(
             f"SELECT COUNT(*) - COUNT(DISTINCT {key}) FROM {table}")) == 0
-
 
 @pytest.mark.aws
 def test_no_unhandled_orphan_key():
@@ -638,7 +581,6 @@ def test_no_unhandled_orphan_key():
         LEFT JOIN dim_client  c ON c.customer_id = f.customer_id
     """)[0]
     assert [int(v) for v in row] == [0, 0, 0]
-
 
 @pytest.mark.aws
 def test_convention_rows_carry_the_expected_volume():
@@ -655,7 +597,6 @@ def test_convention_rows_carry_the_expected_volume():
     assert [int(v) for v in row[:4]] == [139, 82, 155, 376]
     assert float(row[4]) == 464547.61
 
-
 @pytest.mark.aws
 def test_dim_produit_carries_the_catalog_attributes():
     """
@@ -670,7 +611,6 @@ def test_dim_produit_carries_the_catalog_attributes():
     assert int(scalar("SELECT COUNT_IF(tags IS NULL) FROM dim_produit "
                       "WHERE product_id <> -1")) == 0
 
-
 @pytest.mark.aws
 def test_dim_client_carries_the_customer_attributes():
     """
@@ -684,7 +624,6 @@ def test_dim_client_carries_the_customer_attributes():
     assert int(scalar("SELECT COUNT_IF(latitude IS NULL) FROM dim_client "
                       "WHERE customer_id > 0")) == 0
 
-
 @pytest.mark.aws
 def test_calendar_is_continuous():
     """I6 - 91 days, no gap."""
@@ -693,7 +632,6 @@ def test_calendar_is_continuous():
         FROM dim_date
     """)[0]
     assert int(row[0]) == int(row[1]) == 91
-
 
 @pytest.mark.aws
 def test_inner_join_would_have_cost_five_percent():
@@ -712,7 +650,6 @@ def test_inner_join_would_have_cost_five_percent():
     assert int(row[0]) == 376
     assert float(row[1]) == 464547.61
 
-
 @pytest.mark.aws
 def test_monthly_order_counts_are_additive():
     """
@@ -730,7 +667,6 @@ def test_monthly_order_counts_are_additive():
         FROM fact_ventes
     """))
     assert sum(int(r[0]) for r in monthly) == total == 7439
-
 
 @pytest.mark.aws
 def test_gold_is_parquet_and_partitioned():

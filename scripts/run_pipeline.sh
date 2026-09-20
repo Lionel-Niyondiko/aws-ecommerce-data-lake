@@ -1,18 +1,7 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# run_pipeline.sh 
+# run_pipeline.sh
 # ===========================================================================
-# One script, several sub-commands. 
-#
-#   ./scripts/run_pipeline.sh all        ingest -> catalog -> silver -> gold
-#   ./scripts/run_pipeline.sh ingest     upload data/ to bronze/, partitioned
-#   ./scripts/run_pipeline.sh catalog    bronze DDL + MSCK
-#   ./scripts/run_pipeline.sh quality    the profiling queries (read-only)
-#   ./scripts/run_pipeline.sh silver     rebuild silver
-#   ./scripts/run_pipeline.sh gold       rebuild the star schema
-#   ./scripts/run_pipeline.sh analytics  the six business questions
-#   ./scripts/run_pipeline.sh sql FILE   run any .sql file
-#
 # ===========================================================================
 
 set -euo pipefail
@@ -20,7 +9,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# --- output ---------------------------------------------------------------
 if [ -t 1 ]; then
     BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'
     GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
@@ -33,7 +21,6 @@ ok()   { printf '    %s%s%s\n' "$GREEN" "$1" "$RESET"; }
 warn() { printf '    %s%s%s\n' "$YELLOW" "$1" "$RESET"; }
 die()  { printf '\n%sERROR: %s%s\n' "$RED" "$1" "$RESET" >&2; exit 1; }
 
-# --- prerequisites --------------------------------------------------------
 command -v aws       >/dev/null 2>&1 || die "aws CLI not found."
 command -v terraform >/dev/null 2>&1 || die "terraform not found."
 command -v jq        >/dev/null 2>&1 || die "jq not found."
@@ -60,7 +47,7 @@ info "database $DATABASE"
 info "region   $REGION"
 
 # ---------------------------------------------------------------------------
-# Assume the pipeline role 
+# Assume the pipeline role
 # ---------------------------------------------------------------------------
 CURRENT_ARN="$(aws sts get-caller-identity --query Arn --output text)"
 
@@ -117,7 +104,6 @@ athena_run() {
     echo "$qid"
 }
 
-# Prints the result of the last query. Used by the verification blocks.
 athena_show() {
     aws athena get-query-results --query-execution-id "$1" \
         --query 'ResultSet.Rows[].Data[].VarCharValue' --output text
@@ -125,10 +111,6 @@ athena_show() {
 
 # ---------------------------------------------------------------------------
 # run_sql_file <path> - substitute ${BUCKET}, strip comments, split on ';',
-# run each statement.
-#
-# ORDER MATTERS: comments are stripped BEFORE the split, never after. 
-#
 # ---------------------------------------------------------------------------
 run_sql_file() {
     local file="$1" n=0 stmt prepared
@@ -171,8 +153,6 @@ cmd_ingest() {
     d="$(date -u +%Y-%m-%d)"
     info "ingestion_date=$d"
 
-    # Hive-style prefixes: Glue reads the partition value from the path itself.
-    # ingestion_date=2026-09-09/, not 2026-09-09/.
     aws s3 cp data/orders.csv \
         "s3://$BUCKET/bronze/orders/ingestion_date=$d/orders.csv"
     aws s3 cp data/products.jsonl \
@@ -202,7 +182,6 @@ cmd_silver() {
 
 cmd_gold() {
     step "Rebuilding gold"
-    # fact first: it depends on the dimensions, so it must go before them.
     rebuild_zone fact_ventes gold/fact_ventes/
     rebuild_zone dim_date    gold/dim_date/
     rebuild_zone dim_produit gold/dim_produit/
@@ -231,7 +210,20 @@ cmd_all() {
 
 # ===========================================================================
 usage() {
-    sed -n '3,25p' "$0" | sed 's/^# \{0,1\}//'
+    cat <<'EOF'
+run_pipeline.sh
+===========================================================================
+One script, several sub-commands.
+
+  ./scripts/run_pipeline.sh all        ingest -> catalog -> silver -> gold
+  ./scripts/run_pipeline.sh ingest     upload data/ to bronze/, partitioned
+  ./scripts/run_pipeline.sh catalog    bronze DDL + MSCK
+  ./scripts/run_pipeline.sh quality    the profiling queries (read-only)
+  ./scripts/run_pipeline.sh silver     rebuild silver
+  ./scripts/run_pipeline.sh gold       rebuild the star schema
+  ./scripts/run_pipeline.sh analytics  the six business questions
+  ./scripts/run_pipeline.sh sql FILE   run any .sql file
+EOF
 }
 
 case "${1:-all}" in
