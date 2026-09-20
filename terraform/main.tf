@@ -59,6 +59,8 @@ resource "aws_s3_object" "zones" {
     "silver/",
     "gold/",
     "athena-results/",
+    "athena-results/queries/",
+    "athena-results/analytics/",
   ])
 
   bucket = aws_s3_bucket.datalake.id

@@ -27,10 +27,10 @@ validate:
 	$(TF) validate
 
 test:
-	pytest -m "not aws" -q
+	uv run pytest -m "not aws" -q
 
 test-aws:
-	pytest -m aws -q
+	uv run pytest -m aws -q
 
 deploy:
 	$(TF) init -input=false
@@ -43,11 +43,15 @@ quality:
 	./scripts/run_pipeline.sh quality
 
 analytics:
-	./scripts/run_pipeline.sh analytics
+	@echo "==> Running analytics"
+	@./scripts/run_pipeline.sh analytics
+	@echo ""
+	@echo "Analytics complete."
+	@echo "See the generated report in athena-results/analytics/latest/ (cloud) or reports/ (local), depending on your pipeline configuration."
 
 destroy:
 	$(TF) destroy
 
 docs:
 	@echo "http://localhost:8000"
-	@cd docs && python3 -m http.server 8000
+	@cd docs && uv run python -m http.server 8000

@@ -37,14 +37,18 @@ DATABASE="$(echo "$TF_JSON" | jq -r '.glue_database.value     // empty')"
 ROLE_ARN="$(echo "$TF_JSON" | jq -r '.pipeline_role_arn.value // empty')"
 REGION="$(echo "$TF_JSON"   | jq -r '.aws_region.value        // empty')"
 ATHENA_OUT="$(echo "$TF_JSON" | jq -r '.athena_results.value  // empty')"
+ANALYTICS_OUT="$(echo "$TF_JSON" | jq -r '.analytics_results.value // empty')"
 
 [ -n "$BUCKET" ]   || die "bucket_name output is empty. Is the stack deployed?"
 [ -n "$DATABASE" ] || die "glue_database output is empty."
+[ -n "$ATHENA_OUT" ] || die "athena_results output is empty."
 
 export AWS_DEFAULT_REGION="$REGION"
 info "bucket   $BUCKET"
 info "database $DATABASE"
 info "region   $REGION"
+info "athena   $ATHENA_OUT"
+[ -z "$ANALYTICS_OUT" ] || info "analytics $ANALYTICS_OUT"
 
 # ---------------------------------------------------------------------------
 # Assume the pipeline role
@@ -110,27 +114,85 @@ athena_show() {
 }
 
 # ---------------------------------------------------------------------------
-# run_sql_file <path> - substitute ${BUCKET}, strip comments, split on ';',
+# run_sql_file <path> [analytics] - substitute ${BUCKET}, strip comments,
+# split on ';'. In analytics mode, persist Athena results for the report.
 # ---------------------------------------------------------------------------
 run_sql_file() {
-    local file="$1" n=0 stmt prepared
+    local file="$1" mode="${2:-standard}" n=0 stmt prepared qid label
     [ -f "$file" ] || die "File not found: $file"
     step "Running $file"
 
-    prepared="$(sed -e "s|\${BUCKET}|$BUCKET|g" -e 's/--.*$//' "$file")"
+    local report_dir=""
+    if [[ "$mode" == "analytics" ]]; then
+        [ -n "$ANALYTICS_OUT" ] || die "analytics_results output is empty. Run terraform apply to refresh outputs."
+        command -v uv >/dev/null 2>&1 || die "uv not found. Analytics reporting requires uv."
+        local run_stamp
+        run_stamp="$(date +%Y-%m-%d_%H%M%S)"
+        report_dir="$ROOT/reports/analytics_${run_stamp}"
+        mkdir -p "$report_dir/raw"
+        info "report    $report_dir"
+    fi
+
+    if [[ "$mode" == "analytics" ]]; then
+        # Keep comments so explicit @analytics_name markers travel with each statement.
+        prepared="$(sed -e "s|\${BUCKET}|$BUCKET|g" "$file")"
+    else
+        prepared="$(sed -e "s|\${BUCKET}|$BUCKET|g" -e 's/--.*$//' "$file")"
+    fi
 
     while IFS= read -r -d ';' stmt; do
         [ -z "${stmt//[[:space:]]/}" ] && continue
 
         n=$((n + 1))
-        local label
-        label="$(echo "$stmt" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//' | cut -c1-70)"
-        printf '    %2d. %s...\n' "$n" "$label"
+        if [[ "$mode" == "analytics" ]]; then
+            label="$(printf '%s\n' "$stmt" | sed -n 's/.*@analytics_name[[:space:]]\+\([A-Za-z0-9_][A-Za-z0-9_]*\).*/\1/p' | head -1)"
+            [ -n "$label" ] || label="statement_${n}"
+            printf '    %2d. %s\n' "$n" "$label"
+        else
+            label="$(echo "$stmt" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//' | cut -c1-70)"
+            printf '    %2d. %s...\n' "$n" "$label"
+        fi
 
-        athena_run "$stmt" >/dev/null
+        qid="$(athena_run "$stmt")"
+
+        if [[ "$mode" == "analytics" ]]; then
+            info "Query ID: $qid"
+            aws athena get-query-results \
+                --query-execution-id "$qid" \
+                --output json > "$report_dir/raw/${label}.json"
+        fi
     done <<< "$prepared"
 
-    ok "$n statements executed."
+    if [[ "$mode" == "analytics" ]]; then
+        uv run python "$ROOT/scripts/generate_analytics_report.py" "$report_dir" >/dev/null
+
+        local history_s3 latest_s3
+        history_s3="${ANALYTICS_OUT%/}/${run_stamp}/"
+        latest_s3="${ANALYTICS_OUT%/}/latest/"
+
+        aws s3 cp "$report_dir/report.md"   "${history_s3}report.md"   --quiet
+        aws s3 cp "$report_dir/report.json" "${history_s3}report.json" --quiet
+        aws s3 cp "$report_dir/report.csv"  "${history_s3}report.csv"  --quiet
+        aws s3 sync "$report_dir/raw" "${history_s3}raw" --quiet
+
+        aws s3 cp "$report_dir/report.md"   "${latest_s3}report.md"   --quiet
+        aws s3 cp "$report_dir/report.json" "${latest_s3}report.json" --quiet
+        aws s3 cp "$report_dir/report.csv"  "${latest_s3}report.csv"  --quiet
+        aws s3 rm "${latest_s3}raw/" --recursive --quiet 2>/dev/null || true
+        aws s3 sync "$report_dir/raw" "${latest_s3}raw" --quiet
+
+        mkdir -p "$ROOT/reports"
+        cp "$report_dir/report.md" "$ROOT/reports/analytics_latest.md"
+        cp "$report_dir/report.json" "$ROOT/reports/analytics_latest.json"
+        cp "$report_dir/report.csv" "$ROOT/reports/analytics_latest.csv"
+
+        ok "$n statements executed. Report generated and uploaded."
+        info "Local     $report_dir/report.md"
+        info "S3 latest ${latest_s3}"
+        info "S3 run    ${history_s3}"
+    else
+        ok "$n statements executed."
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -190,11 +252,11 @@ cmd_gold() {
 }
 
 cmd_analytics() {
-    run_sql_file sql/05_analytics.sql
+    run_sql_file sql/05_analytics.sql analytics
     step "Results"
-    info "Athena writes them to $ATHENA_OUT"
-    info "Read them in the console, or with:"
-    info "  aws athena get-query-results --query-execution-id <id>"
+    info "Athena query results  $ATHENA_OUT"
+    info "Analytics reports     $ANALYTICS_OUT"
+    info "Local report           reports/analytics_latest.*"
 }
 
 cmd_all() {

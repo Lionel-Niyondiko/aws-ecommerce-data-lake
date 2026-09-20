@@ -1,164 +1,289 @@
--- ANALYTICS - the six business questions
+-- ===========================================================================
+-- ANALYTICS - six questions metier
+-- ===========================================================================
 
--- Q1 - Total revenue, and revenue by country, over the last three months
-
-WITH bounds AS (
-    SELECT MAX(d.full_date) AS last_day
-    FROM fact_ventes f JOIN dim_date d ON d.date_id = f.date_id
+-- @analytics_name q1_total
+-- Q1A - Chiffre d'affaires total sur les trois derniers mois
+WITH bornes AS (
+    SELECT MAX(d.full_date) AS dernier_jour
+    FROM fact_ventes f
+    JOIN dim_date d ON d.date_id = f.date_id
+),
+ventes_periode AS (
+    SELECT f.*
+    FROM fact_ventes f
+    JOIN dim_date d ON d.date_id = f.date_id
+    CROSS JOIN bornes b
+    WHERE d.full_date > DATE_ADD('month', -3, b.dernier_jour)
 )
 SELECT
-    ROUND(SUM(f.line_amount), 2)                                  AS net_revenue,
-    COUNT(*)                                                      AS rows,
-    COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders,
-    ROUND(SUM(CASE WHEN NOT f.is_return THEN f.line_amount END), 2)  AS gross_revenue,
-    ROUND(SUM(CASE WHEN f.is_return THEN f.line_amount END), 2)      AS returns_impact
-FROM fact_ventes f
-JOIN dim_date d ON d.date_id = f.date_id
-CROSS JOIN bounds b
-WHERE d.full_date > DATE_ADD('month', -3, b.last_day);
-WITH bounds AS (
-    SELECT MAX(d.full_date) AS last_day
-    FROM fact_ventes f JOIN dim_date d ON d.date_id = f.date_id
+    ROUND(SUM(line_amount), 2) AS chiffre_affaires_net,
+    COUNT(*) AS nombre_lignes,
+    COUNT(DISTINCT CONCAT(CAST(invoiceno AS varchar), '|', CAST(date_id AS varchar))) AS nombre_commandes,
+    ROUND(SUM(CASE WHEN NOT is_return THEN line_amount ELSE 0 END), 2) AS chiffre_affaires_brut,
+    ROUND(SUM(CASE WHEN is_return THEN line_amount ELSE 0 END), 2) AS impact_retours
+FROM ventes_periode;
+
+-- @analytics_name q1_pays
+-- Q1B - Chiffre d'affaires par pays sur les trois derniers mois
+WITH bornes AS (
+    SELECT MAX(d.full_date) AS dernier_jour
+    FROM fact_ventes f
+    JOIN dim_date d ON d.date_id = f.date_id
+),
+ventes_periode AS (
+    SELECT f.*
+    FROM fact_ventes f
+    JOIN dim_date d ON d.date_id = f.date_id
+    CROSS JOIN bornes b
+    WHERE d.full_date > DATE_ADD('month', -3, b.dernier_jour)
+),
+ca_pays AS (
+    SELECT
+        country AS pays,
+        COUNT(*) AS nombre_lignes,
+        SUM(line_amount) AS chiffre_affaires
+    FROM ventes_periode
+    GROUP BY country
 )
 SELECT
-    f.country,
-    COUNT(*)                                            AS rows,
-    ROUND(SUM(f.line_amount), 2)                        AS revenue,
-    ROUND(100.0 * SUM(f.line_amount)
-          / SUM(SUM(f.line_amount)) OVER (), 2)         AS pct_revenue
-FROM fact_ventes f
-JOIN dim_date d ON d.date_id = f.date_id
-CROSS JOIN bounds b
-WHERE d.full_date > DATE_ADD('month', -3, b.last_day)
-GROUP BY f.country
-ORDER BY revenue DESC;
+    pays,
+    nombre_lignes,
+    ROUND(chiffre_affaires, 2) AS chiffre_affaires,
+    ROUND(100.0 * chiffre_affaires / SUM(chiffre_affaires) OVER (), 2) AS part_chiffre_affaires_pct
+FROM ca_pays
+ORDER BY chiffre_affaires DESC;
 
--- Q2 - Top 10 products by revenue and by quantity
-
-SELECT p.product_id, p.title, p.category,
-       ROUND(SUM(f.line_amount), 2) AS revenue,
-       SUM(f.quantity)              AS quantity,
-       ROUND(AVG(f.unit_price), 2)  AS avg_price
+-- @analytics_name q2_top_chiffre_affaires
+-- Q2A - Top 10 produits par chiffre d'affaires
+SELECT
+    p.product_id AS produit_id,
+    p.title AS produit,
+    p.category AS categorie,
+    ROUND(SUM(f.line_amount), 2) AS chiffre_affaires,
+    SUM(f.quantity) AS quantite_vendue,
+    ROUND(AVG(f.unit_price), 2) AS prix_unitaire_moyen
 FROM fact_ventes f
 JOIN dim_produit p ON p.product_id = f.product_id
 WHERE p.product_id <> -1
 GROUP BY p.product_id, p.title, p.category
-ORDER BY revenue DESC
+ORDER BY chiffre_affaires DESC
 LIMIT 10;
-SELECT p.product_id, p.title, p.category,
-       SUM(f.quantity)              AS quantity,
-       ROUND(SUM(f.line_amount), 2) AS revenue
+
+-- @analytics_name q2_top_quantite
+-- Q2B - Top 10 produits par quantite vendue
+SELECT
+    p.product_id AS produit_id,
+    p.title AS produit,
+    p.category AS categorie,
+    SUM(f.quantity) AS quantite_vendue,
+    ROUND(SUM(f.line_amount), 2) AS chiffre_affaires
 FROM fact_ventes f
 JOIN dim_produit p ON p.product_id = f.product_id
 WHERE p.product_id <> -1
 GROUP BY p.product_id, p.title, p.category
-ORDER BY quantity DESC
+ORDER BY quantite_vendue DESC
 LIMIT 10;
-WITH ranked AS (
-    SELECT p.product_id,
-           RANK() OVER (ORDER BY SUM(f.line_amount) DESC) AS rank_revenue,
-           RANK() OVER (ORDER BY SUM(f.quantity)    DESC) AS rank_quantity
+
+-- @analytics_name q2_comparaison
+-- Q2C - Comparaison des Top 10 par chiffre d'affaires et par quantite
+WITH indicateurs_produit AS (
+    SELECT
+        p.product_id AS produit_id,
+        p.title AS produit,
+        p.category AS categorie,
+        SUM(f.quantity) AS quantite_vendue,
+        SUM(f.line_amount) AS chiffre_affaires
     FROM fact_ventes f
     JOIN dim_produit p ON p.product_id = f.product_id
     WHERE p.product_id <> -1
-    GROUP BY p.product_id
+    GROUP BY p.product_id, p.title, p.category
+),
+classement AS (
+    SELECT
+        produit_id,
+        produit,
+        categorie,
+        quantite_vendue,
+        ROUND(chiffre_affaires, 2) AS chiffre_affaires,
+        RANK() OVER (ORDER BY chiffre_affaires DESC) AS rang_chiffre_affaires,
+        RANK() OVER (ORDER BY quantite_vendue DESC) AS rang_quantite
+    FROM indicateurs_produit
 )
-SELECT COUNT_IF(rank_revenue <= 10 AND rank_quantity <= 10) AS in_both,
-       COUNT_IF(rank_revenue <= 10 AND rank_quantity >  10) AS revenue_only,
-       COUNT_IF(rank_revenue >  10 AND rank_quantity <= 10) AS quantity_only
-FROM ranked;
-
--- Q3 - Monthly revenue and order count
-
 SELECT
-    d.year, d.month, d.month_name,
-    ROUND(SUM(f.line_amount), 2) AS revenue,
-    COUNT(*)                     AS rows,
-    COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders,
-    COUNT(DISTINCT f.invoiceno)  AS raw_invoice_numbers,
-    ROUND(SUM(f.line_amount)
-          / COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)), 2)
-                                 AS avg_basket
+    produit_id,
+    produit,
+    categorie,
+    chiffre_affaires,
+    quantite_vendue,
+    rang_chiffre_affaires,
+    rang_quantite,
+    CASE
+        WHEN rang_chiffre_affaires <= 10 AND rang_quantite <= 10 THEN 'Dans les deux Top 10'
+        WHEN rang_chiffre_affaires <= 10 THEN 'Top 10 chiffre affaires uniquement'
+        WHEN rang_quantite <= 10 THEN 'Top 10 quantite uniquement'
+        ELSE 'Hors Top 10'
+    END AS statut_top_10
+FROM classement
+WHERE rang_chiffre_affaires <= 10 OR rang_quantite <= 10
+ORDER BY
+    CASE
+        WHEN rang_chiffre_affaires <= 10 AND rang_quantite <= 10 THEN 1
+        WHEN rang_chiffre_affaires <= 10 THEN 2
+        ELSE 3
+    END,
+    rang_chiffre_affaires,
+    rang_quantite;
+
+-- @analytics_name q3_mensuel
+-- Q3A - Evolution mensuelle du chiffre d'affaires et du nombre de commandes
+SELECT
+    d.year AS annee,
+    d.month AS mois,
+    d.month_name AS nom_mois,
+    ROUND(SUM(f.line_amount), 2) AS chiffre_affaires,
+    COUNT(*) AS nombre_lignes,
+    COUNT(DISTINCT CONCAT(CAST(f.invoiceno AS varchar), '|', CAST(f.date_id AS varchar))) AS nombre_commandes,
+    COUNT(DISTINCT f.invoiceno) AS nombre_factures_brutes,
+    ROUND(
+        SUM(f.line_amount)
+        / NULLIF(COUNT(DISTINCT CONCAT(CAST(f.invoiceno AS varchar), '|', CAST(f.date_id AS varchar))), 0),
+        2
+    ) AS panier_moyen
 FROM fact_ventes f
 JOIN dim_date d ON d.date_id = f.date_id
 GROUP BY d.year, d.month, d.month_name
 ORDER BY d.year, d.month;
-SELECT SUM(orders)      AS monthly_sum_orders,
-       (SELECT COUNT(DISTINCT invoiceno || '|' || CAST(date_id AS varchar))
-        FROM fact_ventes)                       AS real_total_orders,
-       SUM(raw_invoices) AS monthly_sum_invoices,
-       (SELECT COUNT(DISTINCT invoiceno) FROM fact_ventes) AS real_total_invoices
-FROM (
-    SELECT COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders,
-           COUNT(DISTINCT f.invoiceno)                                      AS raw_invoices
-    FROM fact_ventes f JOIN dim_date d ON d.date_id = f.date_id
+
+-- @analytics_name q3_controle
+-- Q3B - Controle de coherence du comptage des commandes
+WITH mensuel AS (
+    SELECT
+        d.year AS annee,
+        d.month AS mois,
+        COUNT(DISTINCT CONCAT(CAST(f.invoiceno AS varchar), '|', CAST(f.date_id AS varchar))) AS nombre_commandes,
+        COUNT(DISTINCT f.invoiceno) AS nombre_factures_brutes
+    FROM fact_ventes f
+    JOIN dim_date d ON d.date_id = f.date_id
     GROUP BY d.year, d.month
-);
+),
+totaux_mensuels AS (
+    SELECT
+        SUM(nombre_commandes) AS total_commandes_mensuelles,
+        SUM(nombre_factures_brutes) AS total_factures_mensuelles
+    FROM mensuel
+),
+totaux_reels AS (
+    SELECT
+        COUNT(DISTINCT CONCAT(CAST(invoiceno AS varchar), '|', CAST(date_id AS varchar))) AS total_commandes_reel,
+        COUNT(DISTINCT invoiceno) AS total_factures_reel
+    FROM fact_ventes
+)
+SELECT
+    m.total_commandes_mensuelles,
+    r.total_commandes_reel,
+    m.total_factures_mensuelles,
+    r.total_factures_reel
+FROM totaux_mensuels m
+CROSS JOIN totaux_reels r;
 
--- Q4 - Average basket by country
-
-WITH orders AS (
-    SELECT f.invoiceno, f.date_id, f.country,
-           SUM(f.line_amount) AS order_amount,
-           SUM(f.quantity)    AS order_items
+-- @analytics_name q4_panier_par_pays
+-- Q4 - Panier moyen par pays
+WITH commandes AS (
+    SELECT
+        f.invoiceno,
+        f.date_id,
+        f.country AS pays,
+        SUM(f.line_amount) AS montant_commande,
+        SUM(f.quantity) AS articles_commande
     FROM fact_ventes f
     GROUP BY f.invoiceno, f.date_id, f.country
 )
-SELECT country,
-       COUNT(*)                                          AS orders,
-       ROUND(SUM(order_amount), 2)                       AS revenue,
-       ROUND(AVG(order_amount), 2)                       AS avg_basket,
-       ROUND(APPROX_PERCENTILE(order_amount, 0.5), 2)    AS median_basket,
-       ROUND(AVG(order_items), 2)                        AS avg_items
-FROM orders
-GROUP BY country
-ORDER BY avg_basket DESC;
+SELECT
+    pays,
+    COUNT(*) AS nombre_commandes,
+    ROUND(SUM(montant_commande), 2) AS chiffre_affaires,
+    ROUND(AVG(montant_commande), 2) AS panier_moyen,
+    ROUND(APPROX_PERCENTILE(montant_commande, 0.5), 2) AS panier_median,
+    ROUND(AVG(articles_commande), 2) AS nombre_articles_moyen
+FROM commandes
+GROUP BY pays
+ORDER BY panier_moyen DESC;
 
--- Q5 - Top 5 customers by cumulative revenue
-
-SELECT c.customer_id,
-       c.firstname || ' ' || c.lastname AS customer,
-       c.email, c.city, c.company_name,
-       ROUND(SUM(f.line_amount), 2)     AS revenue,
-       COUNT(*)                         AS rows,
-       COUNT(DISTINCT f.invoiceno || '|' || CAST(f.date_id AS varchar)) AS orders
+-- @analytics_name q5_top_clients
+-- Q5 - Top 5 clients par chiffre d'affaires cumule
+SELECT
+    c.customer_id AS client_id,
+    c.firstname || ' ' || c.lastname AS client,
+    c.email AS courriel,
+    c.city AS ville,
+    c.company_name AS entreprise,
+    ROUND(SUM(f.line_amount), 2) AS chiffre_affaires,
+    COUNT(*) AS nombre_lignes,
+    COUNT(DISTINCT CONCAT(CAST(f.invoiceno AS varchar), '|', CAST(f.date_id AS varchar))) AS nombre_commandes
 FROM fact_ventes f
 JOIN dim_client c ON c.customer_id = f.customer_id
 WHERE c.customer_id > 0
 GROUP BY c.customer_id, c.firstname, c.lastname, c.email, c.city, c.company_name
-ORDER BY revenue DESC
+ORDER BY chiffre_affaires DESC
 LIMIT 5;
 
--- Q6 - Orphan keys: how many, what volume, what treatment
-
+-- @analytics_name q6_population_orpheline
+-- Q6A - Cles orphelines, volume et impact sur le chiffre d'affaires
 SELECT
     CASE
-        WHEN product_id = -1 AND customer_id < 0 THEN 'Product AND customer missing'
-        WHEN product_id = -1                     THEN 'Product removed from catalog'
-        WHEN customer_id = -1                    THEN 'Customer deleted from catalog'
-        WHEN customer_id = -2                    THEN 'Customer not recorded'
-        ELSE                                          'Complete keys'
-    END                                                       AS population,
-    COUNT(*)                                                  AS rows,
-    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2)        AS pct_rows,
-    SUM(quantity)                                             AS quantity,
-    ROUND(SUM(line_amount), 2)                                AS revenue,
-    ROUND(100.0 * SUM(line_amount)
-          / SUM(SUM(line_amount)) OVER (), 2)                 AS pct_revenue
+        WHEN product_id = -1 AND customer_id < 0 THEN 'Produit et client absents'
+        WHEN product_id = -1 THEN 'Produit absent du catalogue'
+        WHEN customer_id = -1 THEN 'Client supprime du catalogue'
+        WHEN customer_id = -2 THEN 'Client non renseigne'
+        ELSE 'Cles completes'
+    END AS population,
+    COUNT(*) AS nombre_lignes,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS part_lignes_pct,
+    SUM(quantity) AS quantite_vendue,
+    ROUND(SUM(line_amount), 2) AS chiffre_affaires,
+    ROUND(100.0 * SUM(line_amount) / SUM(SUM(line_amount)) OVER (), 2) AS part_chiffre_affaires_pct
 FROM fact_ventes
 GROUP BY 1
-ORDER BY revenue DESC;
-SELECT (SELECT COUNT(*) FROM fact_ventes) - COUNT(*)                  AS rows_lost,
-       ROUND((SELECT SUM(line_amount) FROM fact_ventes)
-             - SUM(f.line_amount), 2)                                 AS revenue_lost
-FROM fact_ventes f
-JOIN dim_produit p ON p.product_id  = f.product_id AND p.product_id  <> -1
-JOIN dim_client  c ON c.customer_id = f.customer_id AND c.customer_id > 0;
-SELECT d.year, d.month,
-       COUNT(*)                                                  AS rows,
-       COUNT_IF(f.product_id = -1 OR f.customer_id < 0)          AS orphan_rows,
-       ROUND(100.0 * COUNT_IF(f.product_id = -1 OR f.customer_id < 0)
-             / COUNT(*), 2)                                      AS pct_orphan
+ORDER BY chiffre_affaires DESC;
+
+-- @analytics_name q6_impact_cles_orphelines
+-- Q6B - Lignes et chiffre d'affaires exclus si les cles orphelines sont filtrees
+WITH total_general AS (
+    SELECT
+        COUNT(*) AS total_lignes,
+        SUM(line_amount) AS chiffre_affaires_total
+    FROM fact_ventes
+),
+lignes_valides AS (
+    SELECT
+        COUNT(*) AS lignes_valides,
+        SUM(f.line_amount) AS chiffre_affaires_valide
+    FROM fact_ventes f
+    JOIN dim_produit p
+        ON p.product_id = f.product_id
+       AND p.product_id <> -1
+    JOIN dim_client c
+        ON c.customer_id = f.customer_id
+       AND c.customer_id > 0
+)
+SELECT
+    total.total_lignes - valides.lignes_valides AS lignes_perdues,
+    ROUND(total.chiffre_affaires_total - valides.chiffre_affaires_valide, 2) AS chiffre_affaires_perdu
+FROM total_general total
+CROSS JOIN lignes_valides valides;
+
+-- @analytics_name q6_evolution_orphelins
+-- Q6C - Evolution mensuelle des lignes avec cles orphelines
+SELECT
+    d.year AS annee,
+    d.month AS mois,
+    COUNT(*) AS nombre_lignes,
+    COUNT_IF(f.product_id = -1 OR f.customer_id < 0) AS nombre_lignes_orphelines,
+    ROUND(
+        100.0 * COUNT_IF(f.product_id = -1 OR f.customer_id < 0) / COUNT(*),
+        2
+    ) AS part_orpheline_pct
 FROM fact_ventes f
 JOIN dim_date d ON d.date_id = f.date_id
 GROUP BY d.year, d.month

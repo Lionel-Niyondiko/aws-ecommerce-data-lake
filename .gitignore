@@ -27,3 +27,6 @@ cert*.pem
 
 # VS Code
 .vscode/
+
+# Generated analytics reports
+reports/

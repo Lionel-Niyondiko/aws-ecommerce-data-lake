@@ -231,9 +231,13 @@ def test_analytics_excludes_convention_rows_from_rankings():
     assert "customer_id > 0" in analytics
 
 def test_analytics_counts_orders_as_invoice_plus_date():
-    """COUNT(DISTINCT invoiceno) alone overcounts by 125% across months."""
+    """Orders are keyed by invoice number plus date, not invoice number alone."""
     analytics = read_sql("05_analytics.sql")
-    assert "invoiceno || '|' || CAST(f.date_id AS varchar)" in analytics
+    normalized = " ".join(analytics.split()).lower()
+    assert re.search(
+        r"count\(distinct concat\(cast\(f\.invoiceno as varchar\), '\|', cast\(f\.date_id as varchar\)\)\)",
+        normalized,
+    ), "analytics must count distinct invoice number + date pairs"
 
 # ===========================================================================
 # Offline - no column is dropped between bronze and gold
@@ -690,3 +694,14 @@ def test_gold_is_parquet_and_partitioned():
     assert "SNAPPY" in ddl
     assert "YEAR" in ddl
     assert "MONTH" in ddl
+
+
+def test_athena_results_and_analytics_results_are_separate():
+    outputs = (ROOT / "terraform" / "outputs.tf").read_text(encoding="utf-8")
+    assert "athena-results/queries/" in outputs
+    assert "athena-results/analytics/" in outputs
+
+    pipeline = (ROOT / "scripts" / "run_pipeline.sh").read_text(encoding="utf-8")
+    assert '.athena_results.value' in pipeline
+    assert '.analytics_results.value' in pipeline
+    assert 'latest_s3=' in pipeline

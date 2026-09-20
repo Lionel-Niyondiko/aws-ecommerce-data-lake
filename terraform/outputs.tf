@@ -19,6 +19,11 @@ output "aws_region" {
 }
 
 output "athena_results" {
-  description = "S3 location Athena writes query results to"
-  value       = "s3://${aws_s3_bucket.datalake.id}/athena-results/"
+  description = "S3 location where Athena writes native query results"
+  value       = "s3://${aws_s3_bucket.datalake.id}/athena-results/queries/"
+}
+
+output "analytics_results" {
+  description = "S3 location where the business analytics reports are stored"
+  value       = "s3://${aws_s3_bucket.datalake.id}/athena-results/analytics/"
 }
