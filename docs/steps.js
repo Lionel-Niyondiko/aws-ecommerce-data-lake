@@ -83,7 +83,7 @@ export const ui = {
   run: { en: "Run", fr: "Lancer" },
   whatHappens: { en: "What happens", fr: "Ce qui se passe" },
   check: { en: "Check", fr: "Vérifier" },
-  whyItMatters: { en: "Why it matters", fr: "Ce que cela apprend" },
+  whyItMatters: { en: "Why it matters", fr: "Ce que ça change" },
   keyIdea: { en: "Key idea", fr: "Idée clé" },
   noCommand: {
     en: "No command. This step is a decision.",
@@ -134,7 +134,7 @@ export const ui = {
   architectureChoice: { en: "Architecture choice", fr: "Choix d’architecture" },
   /* The block type is still called "pitfall" in the data model; the label
      the reader sees is a finding, not a warning. */
-  pitfall: { en: "Findings", fr: "Constat fait" },
+  pitfall: { en: "Finding", fr: "Constat" },
   invariant: { en: "Invariant", fr: "Invariant" },
   test: { en: "Test", fr: "Test" },
   failureMeans: { en: "Failure means", fr: "Un échec signifie" },
@@ -143,7 +143,7 @@ export const ui = {
   no: { en: "No", fr: "Non" },
   usedInstead: { en: "Used instead", fr: "Utilisé à la place" },
   whyNotHere: { en: "Why not here", fr: "Pourquoi pas ici" },
-  whenRelevant: { en: "When it becomes relevant", fr: "Quand cela devient pertinent" },
+  whenRelevant: { en: "What would change my mind", fr: "Ce qui me ferait changer d’avis" },
 
   plate: { en: "Plate 01 · Target architecture", fr: "Planche 01 · Architecture cible" },
   diagramFallback: {
@@ -174,21 +174,21 @@ export const sections = {
   medallion: {
     title: { en: "Three layers, three guarantees", fr: "Trois couches, trois garanties" },
     note: {
-      en: "Each layer exists because it provides a specific guarantee. A layer with no identifiable guarantee is at risk of becoming one more folder in the bucket.",
-      fr: "Chaque couche existe parce qu’elle apporte une garantie précise. Si une couche n’apporte aucune garantie identifiable, elle risque simplement de devenir un dossier supplémentaire dans le bucket."
+      en: "Each layer earns its place with one guarantee. Without it, a layer is just another folder in the bucket.",
+      fr: "Chaque couche justifie sa place par une garantie. Sans elle, ce ne serait qu’un dossier de plus dans le bucket."
     }
   },
   walkthrough: {
     title: { en: "The walkthrough", fr: "Le parcours" },
     note: {
-      en: "The full path runs from a clean clone to a fully removed AWS environment. Each step has a precise responsibility.",
-      fr: "Le parcours complet va d’un clone propre jusqu’à un environnement AWS entièrement supprimé. Chaque étape a une responsabilité précise."
+      en: "From a clean clone to a fully removed AWS environment. Ten steps, one job each.",
+      fr: "D’un clone propre jusqu’à un environnement AWS entièrement supprimé. Dix étapes, chacune avec un rôle précis."
     }
   },
   decisions: {
     note: {
-      en: "The choices below are not the only possible solutions. The point is to understand why this architecture was chosen for this specific workflow, and when another option would become more appropriate.",
-      fr: "Les choix présentés ici ne sont pas les seules solutions possibles. L’objectif est plutôt de comprendre pourquoi cette architecture a été retenue pour ce workflow précis, et dans quelles circonstances une autre solution deviendrait plus pertinente."
+      en: "Three tools I could have used and didn't: why I left them out, and what would make me add them.",
+      fr: "Trois outils que j’aurais pu utiliser et que je n’ai pas retenus : pourquoi, et ce qui me ferait changer d’avis."
     }
   }
 };
@@ -204,17 +204,17 @@ export const meta = {
     fr: "Deux sources. Des données imparfaites. Un modèle analytique à construire."
   },
   lede: {
-    en: "An e-commerce company wants to make its data available to the Marketing and BI team. Orders come from the sales system as CSV. Products and customers come from the application as JSON. The problem is not loading them into AWS. We first have to understand what they contain, identify the inconsistencies, define the processing rules, then build a model reliable enough to answer the business questions.",
-    fr: "Une entreprise e-commerce souhaite mettre ses données à disposition de l’équipe Marketing/BI. Les commandes proviennent du système de vente sous forme de CSV. Les produits et les clients proviennent de l’application sous forme de JSON. Le problème n’est pas de les charger dans AWS. Il faut d’abord comprendre ce qu’elles contiennent, identifier les incohérences, définir les règles de traitement, puis construire un modèle suffisamment fiable pour répondre aux questions métier."
+    en: "An e-commerce company wants its data in the hands of its Marketing and BI team. Orders come out of the sales system as CSV. Products and customers come out of the application as JSON. Loading them into AWS is the easy part. The real work is finding out what is in them, deciding what to do with the inconsistencies, and building a model that gives the right answers.",
+    fr: "Une entreprise e-commerce veut mettre ses données à disposition de son équipe Marketing et BI. Les commandes sortent du système de vente en CSV. Les produits et les clients sortent de l’application en JSON. Les charger dans AWS, c’est la partie facile. Le vrai travail consiste à comprendre ce qu’elles contiennent, à décider quoi faire des incohérences et à construire un modèle qui donne les bonnes réponses."
   },
   zonesLine: "Bronze → Silver → Gold",
   zonesNote: {
-    en: "Bronze keeps the data as close to its source as possible. Silver cleans it, types it and deduplicates it. Gold organises it into a star schema the BI team can query directly. The architecture and its governance are defined entirely with Terraform.",
-    fr: "La Bronze conserve les données au plus près de leur source. La Silver les nettoie, les type et les déduplique. La Gold les organise dans un modèle en étoile directement exploitable par la BI. L’architecture et sa gouvernance sont entièrement définies avec Terraform."
+    en: "Bronze keeps the data as close to the source as possible. Silver cleans it, types it and deduplicates it. Gold turns it into a star schema the BI team can query directly. Everything, down to the IAM policy and the budget alert, is defined in Terraform.",
+    fr: "Bronze garde les données au plus près de la source. Silver les nettoie, les type et les déduplique. Gold les organise en modèle en étoile, interrogeable directement par la BI. Tout, jusqu’à la politique IAM et l’alerte budgétaire, est défini dans Terraform."
   },
   explainIntro: {
-    en: "A successful transformation is not measured only by the fact that queries return a result. We also have to be able to explain:",
-    fr: "Mais une transformation réussie ne se mesure pas uniquement au fait que les requêtes retournent un résultat. Il faut aussi pouvoir expliquer :"
+    en: "Queries that return a result are not enough. I want to be able to explain:",
+    fr: "Des requêtes qui renvoient un résultat, ça ne suffit pas. Je veux pouvoir expliquer :"
   },
   explainPoints: [
     { en: "what arrived from the sources;", fr: "ce qui est arrivé depuis les sources ;" },
@@ -224,8 +224,8 @@ export const meta = {
     { en: "and how to verify that the final model answers the business questions correctly.", fr: "et comment vérifier que le modèle final répond correctement aux questions métier." }
   ],
   explainClosing: {
-    en: "The project puts that whole chain into practice, from raw data to decision.",
-    fr: "C’est cette chaîne complète, de la donnée brute jusqu’à la décision, que ce projet met en pratique."
+    en: "This project walks through that chain, from the raw files to the answers.",
+    fr: "Ce projet déroule toute cette chaîne, des fichiers bruts jusqu’aux réponses."
   },
   stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python"],
   repo: "https://github.com/Lionel-Niyondiko/aws-ecommerce-data-lake",
@@ -251,8 +251,8 @@ export const meta = {
     [{ en: "Licence", fr: "Licence" }, "MIT"]
   ],
   footer: {
-    en: "Every figure in this project is measured on the source files before the AWS resources are created. The results are then verified by the project's tests.",
-    fr: "Chaque chiffre présenté dans ce projet est mesuré sur les fichiers sources avant la création des ressources AWS. Les résultats sont ensuite vérifiés par les tests du projet."
+    en: "Every figure here was measured on the source files before any AWS resource existed, then checked again by the tests.",
+    fr: "Chaque chiffre a été mesuré sur les fichiers sources avant la création de la moindre ressource AWS, puis revérifié par les tests."
   }
 };
 
@@ -294,12 +294,12 @@ export const challenge = {
       fr: "Les noms de pays apparaissent sous 39 orthographes différentes pour 10 pays." },
     { en: "Invoice numbers look like order keys, but several dates appear in 82% of cases.",
       fr: "Les numéros de facture ressemblent à des clés de commande, mais plusieurs dates apparaissent dans 82 % des cas." },
-    { en: "Some data is therefore usable as it stands, and some requires an explicit rule.",
-      fr: "Certaines données sont donc exploitables telles quelles, d’autres nécessitent une règle explicite." }
+    { en: "Some of the data can be used as it is. The rest needs an explicit rule.",
+      fr: "Une partie des données est utilisable telle quelle. Le reste demande une règle explicite." }
   ],
   closing: {
-    en: "The engineering work is not simply to “clean” the data. We have to decide <strong>where each transformation belongs</strong>, measure what changes, verify that the rules produce the expected result, and make sure no data disappears between two layers without an explanation.",
-    fr: "Le travail d’ingénierie ne consiste pas simplement à « nettoyer » les données. Il faut décider <strong>où chaque transformation doit être effectuée</strong>, mesurer ce qui change, vérifier que les règles produisent le résultat attendu et s’assurer qu’aucune donnée ne disparaît entre deux couches sans explication."
+    en: "“Cleaning the data” undersells the job. The real questions are <strong>where each transformation belongs</strong>, what it changes, and whether any row disappears between two layers without a reason I can point to.",
+    fr: "« Nettoyer les données » ne décrit pas vraiment le travail. Les vraies questions sont : <strong>où placer chaque transformation</strong>, ce qu’elle change, et si une ligne disparaît entre deux couches sans une raison que je puisse montrer."
   }
 };
 
@@ -310,8 +310,8 @@ export const challenge = {
 export const views = {
   title: { en: "Two views, two questions", fr: "Deux vues, deux questions" },
   note: {
-    en: "The project can be read in two ways. The first describes the path the data takes. The second describes how the environment is built, verified and removed. A step can belong to one of these paths without necessarily belonging to the other.",
-    fr: "Le parcours peut être regardé de deux façons. La première décrit le chemin parcouru par la donnée. La seconde décrit la manière dont l’environnement est construit, vérifié et supprimé. Une étape peut donc appartenir à l’un de ces parcours sans nécessairement appartenir à l’autre."
+    en: "There are two ways to read this project: the path the data takes, and the life of the environment it runs in. Some steps belong to one and not the other.",
+    fr: "Ce projet se lit de deux façons : le chemin suivi par la donnée, et le cycle de vie de l’environnement dans lequel elle circule. Certaines étapes appartiennent à l’un sans appartenir à l’autre."
   },
   pipeline: {
     label: { en: "Data pipeline", fr: "Pipeline de données" },
@@ -338,8 +338,8 @@ export const views = {
     ]
   },
   explanation: {
-    en: "This distinction matters. Profiling, for instance, observes the data without modifying it. Terraform creates the environment but transforms no data. The tests verify the behaviour of the project, some of them without even reaching AWS. Keeping the two views apart makes the system understandable without mixing data processing and infrastructure management.",
-    fr: "Cette distinction est importante. Le profilage, par exemple, observe les données sans les modifier. Terraform crée l’environnement mais ne transforme aucune donnée. Les tests vérifient le comportement du projet, certains sans même accéder à AWS. Garder ces deux vues séparées permet de comprendre le système sans mélanger traitement des données et gestion de l’infrastructure."
+    en: "Profiling reads the data and changes nothing. Terraform builds the environment and never touches a row. Some of the tests do not even reach AWS. I keep the two views apart so that a question about the data never gets mixed up with a question about the infrastructure.",
+    fr: "Le profilage lit la donnée sans rien modifier. Terraform construit l’environnement sans toucher à une seule ligne. Certains tests n’atteignent même pas AWS. Je garde les deux vues séparées pour qu’une question sur la donnée ne se mélange jamais avec une question d’infrastructure."
   }
 };
 
@@ -350,8 +350,8 @@ export const views = {
 export const numbers = {
   title: { en: "Follow the numbers", fr: "Suivre les chiffres" },
   note: {
-    en: "Every figure is measured directly on the source files or produced by an identifiable step of the pipeline. The point is not only to know that the pipeline produces 7,547 rows.",
-    fr: "Chaque chiffre est mesuré directement sur les fichiers sources ou produit par une étape identifiable du pipeline. L’objectif n’est pas seulement de savoir que le pipeline produit 7 547 lignes."
+    en: "Each figure was measured on the source files or comes out of a specific pipeline step. Knowing that the pipeline produces 7,547 rows is not enough. I want to know why.",
+    fr: "Chaque chiffre est mesuré sur les fichiers sources ou sort d’une étape précise du pipeline. Savoir que le pipeline produit 7 547 lignes ne suffit pas. Je veux savoir pourquoi."
   },
   pullquote: { en: "Why 7,547?", fr: "Pourquoi 7 547 ?" },
   items: [
@@ -376,8 +376,8 @@ export const numbers = {
       accent: true }
   ],
   closing: {
-    en: "These figures are not decorative values chosen for illustration. They exist to follow the data from one layer to the next and to explain the differences. The most important one is not the final volume: it is the 5.00% of revenue attached to orphan rows. Data can be imperfect and still matter to the analysis.",
-    fr: "Ces chiffres ne sont pas des valeurs décoratives destinées à illustrer le propos. Ils servent à suivre la donnée d’une couche à l’autre et à expliquer les écarts. Le plus important n’est pas le volume final : c’est le 5,00 % de chiffre d’affaires associé aux lignes orphelines. Une donnée peut être imparfaite tout en restant importante pour l’analyse."
+    en: "I use these numbers to follow the data from one layer to the next and to account for every gap. The one that matters most is not the final row count. It is the 5.00% of revenue sitting on orphan rows: imperfect data that still has to be counted.",
+    fr: "Ces chiffres me servent à suivre la donnée d’une couche à l’autre et à expliquer chaque écart. Le plus important n’est pas le volume final. C’est le 5,00 % du chiffre d’affaires porté par des lignes orphelines : des données imparfaites, qu’il faut quand même compter."
   }
 };
 
@@ -388,8 +388,8 @@ export const numbers = {
 export const howItRuns = {
   title: { en: "How the project runs", fr: "Comment le projet s’exécute" },
   note: {
-    en: "The project uses a Makefile as a standardised interface for local commands. The Makefile does not replace an orchestrator such as Airflow. It simply provides a consistent entry point for a short, linear workflow. There is no scheduler here, no automatic retry after failure, and no complex dependency graph. The project does not need them.",
-    fr: "Le projet utilise un Makefile comme interface standardisée pour les commandes locales. Le Makefile ne remplace pas un orchestrateur comme Airflow. Il fournit simplement un point d’entrée cohérent pour un workflow court et linéaire. Il n’y a ici ni planificateur, ni reprise automatique après échec, ni graphe complexe de dépendances. Le projet n’en a pas besoin."
+    en: "Every command goes through the Makefile. It is not an orchestrator and I do not use it as one: no scheduler, no automatic retry, no dependency graph. The pipeline is short and linear, and it needs none of that.",
+    fr: "Toutes les commandes passent par le Makefile. Ce n’est pas un orchestrateur et je ne l’utilise pas comme tel : pas de scheduler, pas de retry automatique, pas de graphe de dépendances. Le pipeline est court et linéaire, il n’en a pas besoin."
   },
   layers: [
     { name: "Makefile",
@@ -412,8 +412,8 @@ export const howItRuns = {
       detail: { en: "Automated verification of the expected behaviour.", fr: "Vérification automatisée du comportement attendu." } }
   ],
   principle: {
-    en: "A command must have one clear, predictable responsibility.",
-    fr: "Une commande doit avoir une responsabilité claire et prévisible."
+    en: "One command, one job. When you run it, you know what it touches.",
+    fr: "Une commande, un rôle. Quand on la lance, on sait ce qu’elle touche."
   },
 
   /* Four cards, one vertical chain each. Only the commands that expand into
@@ -457,7 +457,7 @@ export const howItRuns = {
     {
       key: "inspection",
       name: { en: "Inspection and validation", fr: "Inspection et validation" },
-      note: { en: "Optional. None of these is part of the main pipeline.", fr: "Optionnelles. Aucune ne fait partie du pipeline principal." },
+      note: { en: "Optional. None of these is part of the main pipeline.", fr: "Facultatives. Aucune ne fait partie du pipeline principal." },
       items: [
         { cmd: "make quality",  what: { en: "Profile the raw data", fr: "Profiler les données brutes" } },
         { cmd: "make test",     what: { en: "29 tests, no AWS access", fr: "29 tests, sans accès AWS" } },
@@ -469,7 +469,7 @@ export const howItRuns = {
       key: "docs",
       name: { en: "Consultation", fr: "Consultation" },
       note: { en: "Local viewers. Neither recomputes anything or calls AWS.",
-              fr: "Consultation locale. Aucune ne recalcule quoi que ce soit ni n’appelle AWS." },
+              fr: "Consultation locale. Aucune ne recalcule rien ni n’appelle AWS." },
       items: [
         { cmd: "make docs", what: { en: "This page, http://localhost:8000", fr: "Cette page, http://localhost:8000" } },
         { cmd: "make analytics-view", what: { en: "Last analytics report, http://localhost:8001/report.html",
@@ -486,8 +486,8 @@ export const howItRuns = {
     notLead: { en: "It does not run:", fr: "Il n’exécute pas :" },
     notRuns: "quality\nanalytics\ntest",
     text: {
-      en: "This separation is deliberate. It makes it possible to know exactly what happens when a command is run, and prevents an analysis or a validation from being triggered simply because someone wanted to rebuild the data.",
-      fr: "Cette séparation est volontaire. Elle permet de savoir exactement ce qui se passe lorsqu’une commande est exécutée et d’éviter qu’une opération d’analyse ou de validation soit déclenchée simplement parce qu’on souhaite reconstruire les données."
+      en: "That is deliberate. Rebuilding the data should not quietly rerun the analysis or the tests. Each of those has its own command.",
+      fr: "C’est voulu. Reconstruire les données ne doit pas relancer en douce l’analyse ou les tests. Chacun a sa propre commande."
     }
   }
 };
@@ -516,18 +516,18 @@ export const integrity = {
     { en: "deleted account;", fr: "compte supprimé ;" },
     { en: "retired product;", fr: "produit retiré ;" },
     { en: "identifier absent from the source;", fr: "identifiant absent de la source ;" },
-    { en: "order with no matching identifier.", fr: "commande qui ne possède pas d’identifiant correspondant." }
+    { en: "order with no matching identifier.", fr: "commande sans identifiant correspondant." }
   ],
   innerTitle: { en: "What an INNER JOIN can make disappear", fr: "Ce qu’un INNER JOIN peut faire disparaître" },
   innerBody: {
-    en: "An <code>INNER JOIN</code> on the dimensions removes the rows that find no match. The query keeps working. It does not necessarily raise an error. The report renders. The totals look plausible. Yet part of the revenue has disappeared. Here that is about <strong>5% of revenue</strong>.",
-    fr: "Un <code>INNER JOIN</code> sur les dimensions élimine les lignes qui ne trouvent pas de correspondance. La requête continue de fonctionner. Elle ne génère pas nécessairement d’erreur. Le rapport s’affiche. Les totaux semblent plausibles. Pourtant, une partie du chiffre d’affaires a disparu. Ici, cela représente environ <strong>5 % du chiffre d’affaires</strong>."
+    en: "An <code>INNER JOIN</code> on the dimensions drops every row that finds no match. No error, the report renders, the totals look plausible. About <strong>5% of revenue</strong> is simply gone.",
+    fr: "Un <code>INNER JOIN</code> sur les dimensions supprime toutes les lignes sans correspondance. Aucune erreur, le rapport s’affiche, les totaux ont l’air plausibles. Environ <strong>5 % du chiffre d’affaires</strong> a tout simplement disparu."
   },
   comparison: {
     caption: { en: "The same query, two approaches", fr: "La même requête, deux approches" },
     measure: { en: "Measure", fr: "Mesure" },
     columns: [
-      { en: "With convention keys", fr: "Avec convention keys" },
+      { en: "With convention keys", fr: "Avec clés de convention" },
       { en: "With INNER JOIN", fr: "Avec INNER JOIN" }
     ],
     rows: [
@@ -540,29 +540,29 @@ export const integrity = {
   preserve: {
     title: { en: "Preserving the business rows", fr: "Préserver les lignes métier" },
     body: [
-      { en: "An orphan key is a referential integrity problem. It is not automatically a reason to delete the business data. If an order genuinely exists, it must keep contributing to revenue even when the matching dimension is incomplete.",
-        fr: "Une clé orpheline est un problème d’intégrité référentielle. Ce n’est pas automatiquement une raison pour supprimer la donnée métier. Si une commande existe réellement, elle doit continuer à contribuer au chiffre d’affaires, même si la dimension correspondante est incomplète." }
+      { en: "An orphan key is a referential integrity problem, not a reason to delete a sale. If the order happened, its revenue counts, even when the catalog has lost the product or the customer.",
+        fr: "Une clé orpheline est un problème d’intégrité référentielle, pas une raison de supprimer une vente. Si la commande a eu lieu, son chiffre d’affaires compte, même quand le catalogue a perdu le produit ou le client." }
     ],
-    keysLead: { en: "The model therefore uses convention keys such as:", fr: "Le modèle utilise donc des clés de convention telles que :" },
+    keysLead: { en: "So I attach them to convention keys:", fr: "Je les rattache donc à des clés de convention :" },
     keys: "-1\n-2",
     keysNote: {
-      en: "Orphan rows are attached to these values when no real match exists.",
-      fr: "Les lignes orphelines sont rattachées à ces valeurs lorsqu’aucune correspondance réelle n’existe."
+      en: "Any row without a real match gets one of these.",
+      fr: "Toute ligne sans correspondance réelle reçoit l’une de ces valeurs."
     },
-    sumLead: { en: "Revenue can then be computed with:", fr: "On peut ainsi calculer :" },
+    sumLead: { en: "Revenue is then just:", fr: "Le chiffre d’affaires reste alors un simple :" },
     sumCode: "SUM(line_amount)",
     sumNote: {
-      en: "without losing revenue simply because a dimension does not hold the matching key.",
-      fr: "sans perdre le chiffre d’affaires simplement parce qu’une dimension ne possède pas la clé correspondante."
+      en: "and no sale drops out because a dimension is missing its key.",
+      fr: "et aucune vente ne disparaît parce qu’une dimension n’a pas la clé."
     },
-    isolateLead: { en: "The problematic rows also stay identifiable. For example:", fr: "Les lignes problématiques restent également identifiables. Par exemple :" },
+    isolateLead: { en: "And the orphans are still easy to find:", fr: "Et les orphelines restent faciles à retrouver :" },
     isolateCode: "WHERE product_id = -1",
-    isolateNote: { en: "isolates them.", fr: "permet de les isoler." }
+    isolateNote: { en: "returns them.", fr: "les renvoie." }
   },
   reasons: {
-    title: { en: "Why this decision matters", fr: "Pourquoi cette décision compte" },
-    lead: { en: "The analytical model has to keep two different pieces of information:",
-            fr: "Le modèle analytique doit conserver deux informations différentes :" },
+    title: { en: "Why I keep them", fr: "Pourquoi je les garde" },
+    lead: { en: "Each of these rows carries two separate facts:",
+            fr: "Chacune de ces lignes porte deux informations distinctes :" },
     items: [
       { en: "<strong>the business reality</strong>, here the order and its amount;",
         fr: "<strong>la réalité métier</strong>, ici la commande et son montant ;" },
@@ -571,8 +571,8 @@ export const integrity = {
     ]
   },
   closing: {
-    en: "Deleting the row mixes the two problems together. Keeping it with a convention key makes it possible to treat them separately.",
-    fr: "Supprimer la ligne mélange les deux problèmes. La conserver avec une clé de convention permet de les traiter séparément."
+    en: "Deleting the row throws away the first fact to hide the second. With a convention key, I keep both and can deal with each one on its own.",
+    fr: "Supprimer la ligne sacrifie la première information pour cacher la seconde. Avec une clé de convention, je garde les deux et je peux traiter chacune séparément."
   }
 };
 
@@ -590,18 +590,18 @@ export const architecture = {
     { key: "bronze", path: "bronze/",
       title: { en: "Bronze", fr: "Bronze" },
       volume: { en: "7,956 rows · CSV + NDJSON", fr: "7 956 lignes · CSV + NDJSON" },
-      text: { en: "Keeps the data as faithful to the sources as possible. The principle is to hold a raw reference that lets us go back to what was actually received.",
-              fr: "La zone Bronze conserve les données aussi fidèlement que possible par rapport aux sources. Le principe est de disposer d’une référence brute permettant de revenir à ce qui a réellement été reçu." } },
+      text: { en: "The data exactly as the sources sent it. If a figure is ever questioned, this is where I go back to.",
+              fr: "Les données telles que les sources les ont envoyées. Si un chiffre est contesté, c’est là que je reviens." } },
     { key: "silver", path: "silver/",
       title: { en: "Silver", fr: "Silver" },
       volume: { en: "7,547 rows · 39 spellings to 10", fr: "7 547 lignes · 39 orthographes vers 10" },
-      text: { en: "Cleans the form of the data without changing its business meaning: types, formats, country spellings, duplicates, and the edge cases found during profiling. 409 rows are removed by five numbered rules. The 376 orphan rows are kept.",
-              fr: "La couche Silver nettoie la forme des données sans modifier leur sens métier : les types, les formats, les orthographes de pays, les doublons et les cas limites identifiés pendant le profilage. 409 lignes sont retirées selon cinq règles numérotées. Les 376 lignes orphelines, elles, sont conservées." } },
+      text: { en: "Fixes the form of the data without changing what it means: types, formats, country spellings, duplicates and the edge cases found during profiling. 409 rows are removed by five numbered rules. The 376 orphan rows stay.",
+              fr: "Silver corrige la forme des données sans toucher à leur sens métier : types, formats, orthographes de pays, doublons et cas limites repérés au profilage. 409 lignes sont retirées selon cinq règles numérotées. Les 376 lignes orphelines sont conservées." } },
     { key: "gold", path: "gold/",
       title: { en: "Gold", fr: "Gold" },
       volume: { en: "7,547 facts + 354 dimension rows", fr: "7 547 faits + 354 lignes de dimensions" },
-      text: { en: "The final analytical model. The star schema is ready for business analysis, and the checks verify in particular that joining the dimensions does not change the row count or the revenue unexpectedly.",
-              fr: "La couche Gold constitue le modèle analytique final. Le modèle en étoile est prêt pour les analyses métier, et les contrôles vérifient notamment que les jointures avec les dimensions ne modifient pas de manière inattendue le nombre de lignes ou le chiffre d’affaires." } },
+      text: { en: "The star schema the analysts query. The checks make sure that joining the dimensions changes neither the row count nor the revenue.",
+              fr: "Le modèle en étoile interrogé par les analystes. Les contrôles vérifient que la jointure avec les dimensions ne change ni le nombre de lignes ni le chiffre d’affaires." } },
     { key: "results", path: "athena-results/",
       title: { en: "Athena results", fr: "Résultats Athena" },
       volume: { en: "query output + reports", fr: "sorties de requêtes + rapports" },
@@ -609,8 +609,8 @@ export const architecture = {
               fr: "<code>queries/</code> contient les fichiers de résultats écrits par Athena pour chaque requête. <code>analytics/</code> contient le rapport métier généré par <code>make analytics</code> : un dossier par exécution, plus <code>latest/</code>." } }
   ],
   closing: {
-    en: "The project stays deliberately compact. Terraform owns the infrastructure. Athena provides the SQL engine. Glue provides the metadata. S3 provides the storage. Python and pytest verify the behaviour. GitHub Actions automates the checks. Each component has an identifiable role. The result is not an architecture designed to cover every possible case. It is an architecture suited to this workflow, with choices explicit enough to be challenged when the constraints change.",
-    fr: "Le projet reste volontairement compact. Terraform possède l’infrastructure. Athena fournit le moteur SQL. Glue fournit les métadonnées. S3 fournit le stockage. Python et pytest vérifient le comportement. GitHub Actions automatise les contrôles. Chaque composant a donc un rôle identifiable. Le résultat n’est pas une architecture conçue pour couvrir tous les cas possibles. C’est une architecture adaptée à ce workflow, avec des choix suffisamment explicites pour pouvoir être remis en question lorsque les contraintes changent."
+    en: "I kept the architecture small on purpose. Terraform owns the infrastructure, S3 stores, Glue describes, Athena computes, pytest checks, and GitHub Actions runs the checks on every push. It is sized for this project, not for everything it could grow into. If the constraints change, every choice is written down and easy to revisit.",
+    fr: "J’ai volontairement gardé l’architecture petite. Terraform gère l’infrastructure, S3 stocke, Glue décrit, Athena calcule, pytest vérifie, et GitHub Actions lance les contrôles à chaque push. Elle est dimensionnée pour ce projet, pas pour tout ce qu’il pourrait devenir. Si les contraintes changent, chaque choix est écrit et facile à revoir."
   }
 };
 
@@ -629,14 +629,14 @@ export const medallion = [
       { en: "kept as received", fr: "conservées telles que reçues" }
     ],
     volume: "7,956",
-    format: { en: "the question this layer answers", fr: "la question à laquelle cette couche répond" },
+    format: { en: "rows, CSV + NDJSON", fr: "lignes, CSV + NDJSON" },
     principle: {
       en: "What did the source actually send, and when?",
       fr: "Qu’est-ce que la source a réellement envoyé, et quand ?"
     },
     guaranteeText: {
-      en: "External tables make it possible to work on this data without moving its contents. A <code>DROP</code> removes the table definition, not the source files.",
-      fr: "Les tables externes permettent de travailler sur ces données sans déplacer leur contenu. Un <code>DROP</code> supprime la définition de la table, pas les fichiers sources."
+      en: "External tables let me query the files where they are. A <code>DROP</code> removes the table definition, never the files.",
+      fr: "Les tables externes me permettent d’interroger les fichiers là où ils sont. Un <code>DROP</code> supprime la définition de la table, jamais les fichiers."
     }
   },
   {
@@ -656,8 +656,8 @@ export const medallion = [
       fr: "Le nettoyage porte sur la forme des données, pas sur leur sens métier."
     },
     guaranteeText: {
-      en: "The data is transformed according to the rules the project defines. Orphan rows are therefore not deleted simply because they do not match the dimensions.",
-      fr: "Les données sont transformées selon les règles définies par le projet. Les lignes orphelines ne sont donc pas supprimées simplement parce qu’elles ne correspondent pas aux dimensions."
+      en: "Every change follows a written rule. Orphan rows stay: not matching a dimension is not a cleaning problem.",
+      fr: "Chaque modification suit une règle écrite. Les lignes orphelines restent : ne pas correspondre à une dimension n’est pas un problème de nettoyage."
     }
   },
   {
@@ -677,8 +677,8 @@ export const medallion = [
       fr: "Répondre aux questions métier tout en conservant les contrôles qui prouvent qu’il n’y a pas eu de perte."
     },
     guaranteeText: {
-      en: "The Gold layer organises the data into a star schema. It answers the business questions while keeping the checks needed to verify that the transformations introduced no unexpected loss.",
-      fr: "La couche Gold organise les données dans un modèle en étoile. Elle permet de répondre aux questions métier tout en conservant les contrôles nécessaires pour vérifier que les transformations n’ont pas introduit de pertes inattendues."
+      en: "A star schema that answers the business questions, with checks that prove nothing was lost on the way.",
+      fr: "Un modèle en étoile qui répond aux questions métier, avec des contrôles qui prouvent que rien ne s’est perdu en route."
     }
   }
 ];
@@ -719,12 +719,12 @@ export const steps = [
     title: { en: "Prepare the workstation", fr: "Préparer le poste de travail" },
     duration: "~5 min",
     objective: {
-      en: "the main objective is to verify that the local environment and the project are ready.",
-      fr: "l'objectif principal est de vérifier que l’environnement local et le projet sont prêts."
+      en: "Check that the machine and the project are ready before touching AWS.",
+      fr: "Vérifier que le poste et le projet sont prêts avant de toucher à AWS."
     },
     why: {
-      en: "A failure can come from two places: the local environment, or the project itself. It is better to rule out the environment first. The offline checks validate a significant part of the project without an AWS account and without generating any cost.",
-      fr: "Un échec peut provenir de deux endroits : l’environnement local ou le projet lui-même. Il est préférable d’éliminer d’abord les problèmes liés à l’environnement. Les vérifications hors ligne permettent de valider une partie importante du projet sans compte AWS et sans générer de coût."
+      en: "When something fails, it is either the machine or the project. I rule out the machine first. The offline checks cover a good part of the project with no AWS account and no cost.",
+      fr: "Quand quelque chose échoue, c’est soit le poste, soit le projet. J’élimine d’abord le poste. Les contrôles hors ligne couvrent une bonne partie du projet, sans compte AWS et sans coût."
     },
     run: {
       cmd: "uv sync\nmake test\nmake validate",
@@ -758,17 +758,17 @@ export const steps = [
       ]
     },
     whyItMatters: {
-      en: "This also lets CI run the offline tests on every push without generating AWS costs.",
-      fr: "Cela permet également à la CI de lancer les tests hors ligne à chaque push sans générer de coûts AWS."
+      en: "It is also why CI can run these tests on every push without an AWS bill.",
+      fr: "C’est aussi ce qui permet à la CI de lancer ces tests à chaque push, sans facture AWS."
     },
     keyIdea: {
-      en: "Verify locally everything that can be verified before deploying.",
-      fr: "Vérifier localement tout ce qui peut l’être avant de déployer."
+      en: "If it can be checked locally, check it before deploying.",
+      fr: "Ce qui peut se vérifier en local se vérifie avant de déployer."
     },
     blocks: [
       {
         type: "pitfall",
-        title: { en: "IMPORTANT", fr: "IMPORTANT" },
+        title: { en: "Set the alert email first", fr: "Renseigner l’e-mail d’alerte d’abord" },
         text: {
           en: "Fill in <code>budget_alert_email</code> in <code>terraform.tfvars</code> before deploying. AWS Budgets requires a real email address.",
           fr: "Renseignez <code>budget_alert_email</code> dans <code>terraform.tfvars</code> avant le déploiement. AWS Budgets exige une adresse e-mail réelle."
@@ -790,14 +790,14 @@ export const steps = [
       fr: "Une fois les contrôles locaux passés, Terraform crée les ressources AWS nécessaires au projet."
     },
     why: {
-      en: "The deployment is described entirely in the Terraform code. Nothing is created by hand in the AWS console, which is what makes the environment reviewable and reproducible.",
-      fr: "Le déploiement est entièrement décrit dans le code Terraform. Rien n’est créé à la main dans la console AWS, ce qui rend l’environnement relisible et reproductible."
+      en: "Everything is in the Terraform code. I create nothing by hand in the AWS console, so the environment can be reviewed and rebuilt.",
+      fr: "Tout est dans le code Terraform. Je ne crée rien à la main dans la console AWS : l’environnement peut être relu et reconstruit."
     },
     run: {
       cmd: "aws sts get-caller-identity\ncp terraform/terraform.tfvars.example terraform/terraform.tfvars\nmake deploy",
       note: {
-        en: "Confirm which AWS account is about to be billed, then copy the example file and fill in the required variables. Both belong to the deployment, which is why neither is needed for the local checks.",
-        fr: "Confirmer quel compte AWS va être facturé, puis copier le fichier d’exemple et renseigner les variables nécessaires. Les deux relèvent du déploiement : ils ne sont donc pas nécessaires aux contrôles locaux."
+        en: "Confirm which AWS account is about to be billed, then copy the example file and fill in the required variables. Neither is needed for the local checks.",
+        fr: "Confirmer quel compte AWS va être facturé, puis copier le fichier d’exemple et renseigner les variables nécessaires. Aucun des deux n’est nécessaire aux contrôles locaux."
       }
     },
     flow: ["make deploy", "terraform init", "terraform apply"],
@@ -816,12 +816,12 @@ export const steps = [
       ]
     },
     whyItMatters: {
-      en: "Infrastructure as code is not about avoiding the console. It makes the environment a reviewable artefact: the bucket name, the IAM policy and the budget threshold are all in a diff someone can read.",
-      fr: "L’infrastructure as code ne sert pas à éviter la console. Elle fait de l’environnement un artefact relisible : le nom du bucket, la politique IAM et le seuil de budget sont tous dans un diff que quelqu’un peut lire."
+      en: "With Terraform, the bucket name, the IAM policy and the budget threshold all show up in a diff someone can review. That is the real benefit, more than staying out of the console.",
+      fr: "Avec Terraform, le nom du bucket, la politique IAM et le seuil de budget apparaissent tous dans un diff que quelqu’un peut relire. C’est ça, le vrai intérêt, plus que d’éviter la console."
     },
     keyIdea: {
       en: "If it is not in the code, it does not exist.",
-      fr: "Si ce n’est pas dans le code, cela n’existe pas."
+      fr: "Si ce n’est pas dans le code, ça n’existe pas."
     },
     blocks: [
       {
@@ -885,12 +885,12 @@ resource "aws_s3_object" "zones" {
     title: { en: "Land the source files", fr: "Déposer les fichiers sources" },
     duration: "~1 min",
     objective: {
-      en: "The source files are placed in the Bronze zone. They are the raw representation of the data the system received.",
-      fr: "Les fichiers sources sont déposés dans la zone Bronze. Ils constituent la représentation brute des données reçues par le système."
+      en: "Copy the three source files into Bronze, as they are.",
+      fr: "Copier les trois fichiers sources dans Bronze, tels quels."
     },
     why: {
-      en: "Bronze answers one question: what did the source send, and when? If ingestion also cleaned, we would lose the ability to prove what arrived, and every later count would be an opinion.",
-      fr: "Bronze répond à une question : qu’a envoyé la source, et quand ? Si l’ingestion nettoyait aussi, on perdrait la capacité de prouver ce qui est arrivé, et chaque décompte ultérieur deviendrait une opinion."
+      en: "Bronze answers one question: what did the source send, and when? If ingestion also cleaned, I could no longer prove what arrived, and every later count would be an opinion.",
+      fr: "Bronze répond à une question : qu’a envoyé la source, et quand ? Si l’ingestion nettoyait aussi, je ne pourrais plus prouver ce qui est arrivé, et chaque décompte ultérieur deviendrait une opinion."
     },
     run: { cmd: "./scripts/run_pipeline.sh ingest" },
     flow: ["run_pipeline.sh ingest", "aws s3 cp × 3", "bronze/…/ingestion_date=YYYY-MM-DD/"],
@@ -909,7 +909,7 @@ resource "aws_s3_object" "zones" {
     },
     whyItMatters: {
       en: "Bronze is append-only. Running the ingestion again on another day adds a new partition next to the first, which is what makes the raw layer a record rather than a cache.",
-      fr: "Bronze fonctionne en ajout seul. Relancer l’ingestion un autre jour ajoute une nouvelle partition à côté de la première, ce qui fait de la couche brute un enregistrement plutôt qu’un cache."
+      fr: "Bronze est en append-only. Relancer l’ingestion un autre jour ajoute une nouvelle partition à côté de la première : la couche brute devient un historique, pas un cache."
     },
     keyIdea: {
       en: "Store what arrived, exactly as it arrived.",
@@ -946,7 +946,7 @@ resource "aws_s3_object" "zones" {
       rows: [
         ["orders_raw", { en: "7,956 rows", fr: "7 956 lignes" }],
         ["products_raw / users_raw", "130 / 130"],
-        [{ en: "Header leaked into the data", fr: "En-tête ayant fui dans les données" }, "0"],
+        [{ en: "Header read as data", fr: "En-tête lu comme une donnée" }, "0"],
         [{ en: "Data location", fr: "Emplacement des données" }, { en: "still S3, Glue stores metadata only", fr: "toujours S3, Glue ne stocke que des métadonnées" }]
       ]
     },
@@ -970,8 +970,8 @@ resource "aws_s3_object" "zones" {
         ],
         chosen: { en: "Everything as text, in the CSV only", fr: "Tout en texte, uniquement pour le CSV" },
         because: {
-          en: "This file contains 29 dates written <code>31/02/2026</code>. With a <code>date</code> column, one bad value fails the <em>whole</em> query with <code>HIVE_BAD_DATA</code>, so we lose the 7,927 good rows in order to read the 29 bad ones. Typing is a judgement about the data, and that judgement belongs to Silver, where <code>TRY_CAST</code> can count what it rejects. The two JSON files come from an API with a schema enforced in code, so they keep native types.",
-          fr: "Ce fichier contient 29 dates écrites <code>31/02/2026</code>. Avec une colonne <code>date</code>, une seule mauvaise valeur fait échouer la requête <em>entière</em> avec <code>HIVE_BAD_DATA</code> : on perd les 7 927 bonnes lignes pour lire les 29 mauvaises. Typer est un jugement sur la donnée, et ce jugement appartient à Silver, où <code>TRY_CAST</code> peut compter ce qu’il rejette. Les deux fichiers JSON proviennent d’une API à schéma imposé par le code : ils conservent leurs types natifs."
+          en: "This file contains 29 dates written <code>31/02/2026</code>. With a <code>date</code> column, one bad value fails the <em>whole</em> query with <code>HIVE_BAD_DATA</code>, so 29 bad rows cost you the 7,927 good ones. Typing is a judgement about the data, and that judgement belongs to Silver, where <code>TRY_CAST</code> can count what it rejects. The two JSON files come from an API with a schema enforced in code, so they keep native types.",
+          fr: "Ce fichier contient 29 dates écrites <code>31/02/2026</code>. Avec une colonne <code>date</code>, une seule mauvaise valeur fait échouer la requête <em>entière</em> avec <code>HIVE_BAD_DATA</code> : 29 mauvaises lignes font perdre les 7 927 bonnes. Typer est un jugement sur la donnée, et ce jugement appartient à Silver, où <code>TRY_CAST</code> peut compter ce qu’il rejette. Les deux fichiers JSON proviennent d’une API à schéma imposé par le code : ils conservent leurs types natifs."
         }
       },
       {
@@ -1015,24 +1015,24 @@ MSCK REPAIR TABLE orders_raw;`
     title: { en: "Profile the raw data", fr: "Profiler les données brutes" },
     duration: "~3 min",
     objective: {
-      en: "The raw data is analysed before it is transformed. This step measures the anomalies and verifies that the cleaning rules match what is actually in the sources.",
-      fr: "Les données brutes sont analysées avant leur transformation. Cette étape mesure les anomalies et permet de vérifier que les règles de nettoyage correspondent bien à ce qui se trouve réellement dans les sources."
+      en: "Measure the anomalies before writing a single cleaning rule.",
+      fr: "Mesurer les anomalies avant d’écrire la moindre règle de nettoyage."
     },
     why: {
-      en: "A cleaning rule we cannot justify with a number is a rule we cannot defend when someone asks where the missing revenue went. Measuring first also turns Silver into a prediction that can be proved wrong.",
-      fr: "Une règle de nettoyage qu’on ne peut pas justifier par un chiffre est une règle qu’on ne pourra pas défendre le jour où l’on demandera où est passé le chiffre d’affaires manquant. Mesurer d’abord transforme aussi Silver en une prédiction réfutable."
+      en: "A cleaning rule I cannot back with a number is a rule I cannot defend when someone asks where the missing revenue went. Measuring first also turns Silver into a prediction that can be proved wrong.",
+      fr: "Une règle de nettoyage que je ne peux pas justifier par un chiffre, je ne pourrai pas la défendre le jour où l’on me demandera où est passé le chiffre d’affaires manquant. Mesurer d’abord fait aussi de Silver une prédiction qu’on peut prendre en défaut."
     },
     run: {
       cmd: "make quality",
       note: {
-        en: "This command is not part of make pipeline. It is read-only: it writes nothing and drops nothing. Profiling shows the real state of the data before the transformation rules are applied; the analytical queries answer the business questions afterwards. These two uses of SQL are deliberately kept apart.",
-        fr: "Cette commande ne fait pas partie de make pipeline. Elle est en lecture seule : elle n’écrit rien et ne supprime rien. Le profilage permet de comprendre l’état réel des données avant d’appliquer les règles de transformation ; les requêtes analytiques, elles, répondent ensuite aux questions métier. Ces deux usages de SQL sont volontairement séparés."
+        en: "Not part of make pipeline, and read-only: it writes nothing and drops nothing. Profiling looks at the data before the rules; the analytics queries answer the business questions once the model exists. I keep the two apart.",
+        fr: "Ne fait pas partie de make pipeline, et en lecture seule : rien n’est écrit, rien n’est supprimé. Le profilage regarde la donnée avant les règles ; les requêtes analytiques répondent aux questions métier une fois le modèle construit. Je garde les deux séparés."
       }
     },
     flow: ["make quality", "run_pipeline.sh quality", "sql/02_quality.sql", "15 read-only queries"],
     whatHappens: {
-      en: "Fifteen profiling queries read the bronze tables and count the defects by class. Nothing is written to S3, no table is created, and no row is removed. The output is a report we read before deciding anything.",
-      fr: "Quinze requêtes de profilage lisent les tables bronze et comptent les défauts par classe. Rien n’est écrit sur S3, aucune table n’est créée, aucune ligne n’est retirée. Le résultat est un rapport que vous lisez avant de décider quoi que ce soit."
+      en: "Fifteen profiling queries read the bronze tables and count the defects by class. Nothing is written to S3, no table is created, and no row is removed. The output is a report I read before deciding anything.",
+      fr: "Quinze requêtes de profilage lisent les tables bronze et comptent les défauts par classe. Rien n’est écrit sur S3, aucune table n’est créée, aucune ligne n’est retirée. Le résultat est un rapport que je lis avant de décider quoi que ce soit."
     },
     check: {
       caption: { en: "Measured on 7,956 raw rows", fr: "Mesuré sur 7 956 lignes brutes" },
@@ -1047,12 +1047,12 @@ MSCK REPAIR TABLE orders_raw;`
       ]
     },
     whyItMatters: {
-      en: "Three of these findings are not in the brief, and each one changes a later decision. Profiling is how we find them. Reading the specification is not.",
-      fr: "Trois de ces constats ne figurent pas dans l’énoncé, et chacun modifie une décision ultérieure. Le profilage permet de les trouver. Lire la spécification, non."
+      en: "Three of these findings were not in the brief, and each one changed a later decision. I found them by profiling, not by reading the spec.",
+      fr: "Trois de ces constats ne figuraient pas dans l’énoncé, et chacun a changé une décision par la suite. Je les ai trouvés en profilant, pas en lisant la spécification."
     },
     keyIdea: {
       en: "Measure the data first, then decide how to transform it.",
-      fr: "On mesure d’abord les données, puis on décide comment les transformer."
+      fr: "D’abord mesurer les données, ensuite décider comment les transformer."
     },
     blocks: [
       {
@@ -1104,8 +1104,8 @@ MSCK REPAIR TABLE orders_raw;`
       fr: "Athena CTAS transforme les données Bronze en données Silver : nettoyées, typées, dédupliquées et normalisées."
     },
     why: {
-      en: "The raw layer is unusable for analysis. Every column is text, dates are unparseable, countries are spelled 39 ways. Silver fixes the form of the data so that a query can run. It does not decide what the data means.",
-      fr: "La couche brute est inexploitable pour l’analyse. Chaque colonne est du texte, les dates sont inanalysables, les pays s’écrivent de 39 façons. Silver corrige la forme de la donnée pour qu’une requête puisse s’exécuter. Elle ne décide pas de ce que la donnée signifie."
+      en: "The raw layer is unusable for analysis. Every column is text, some dates cannot be parsed, countries are spelled 39 ways. Silver fixes the form of the data so that a query can run. It does not decide what the data means.",
+      fr: "La couche brute est inexploitable pour l’analyse. Chaque colonne est du texte, certaines dates sont impossibles à parser, les pays s’écrivent de 39 façons. Silver corrige la forme de la donnée pour qu’une requête puisse s’exécuter. Elle ne décide pas de ce que la donnée signifie."
     },
     run: { cmd: "./scripts/run_pipeline.sh silver" },
     flow: ["run_pipeline.sh silver", "DROP TABLE + clear the prefix", "sql/03_silver.sql", "3 CTAS to Parquet"],
@@ -1126,8 +1126,8 @@ MSCK REPAIR TABLE orders_raw;`
       ]
     },
     whyItMatters: {
-      en: "The cleaning applies to the form of the data, not to its business meaning. Orphan rows are therefore not deleted simply because they do not match the dimensions.",
-      fr: "Le nettoyage porte sur la forme des données, pas sur leur sens métier. Les lignes orphelines ne sont donc pas supprimées simplement parce qu’elles ne correspondent pas aux dimensions."
+      en: "Silver fixes form, not meaning. An orphan row is well formed; it just points at something the catalog lost. So it stays.",
+      fr: "Silver corrige la forme, pas le sens. Une ligne orpheline est bien formée ; elle pointe simplement vers quelque chose que le catalogue a perdu. Elle reste donc."
     },
     keyIdea: {
       en: "Silver cleans the form. Gold models the meaning.",
@@ -1193,8 +1193,8 @@ END AS country`
     title: { en: "Build the dimensional model", fr: "Construire le modèle dimensionnel" },
     duration: "~2 min",
     objective: {
-      en: "The Silver data is transformed into a dimensional model. The result is a star schema made of the facts and dimensions the analyses need.",
-      fr: "Les données Silver sont transformées en modèle dimensionnel. Le résultat est un modèle en étoile composé des faits et dimensions nécessaires aux analyses."
+      en: "Turn Silver into a star schema: one fact table, three dimensions.",
+      fr: "Transformer Silver en modèle en étoile : une table de faits, trois dimensions."
     },
     why: {
       en: "Silver is queryable but not modelled. Gold gives the data a shape an analyst can use without knowing how it was cleaned: measures on the fact, context on the dimensions, and a defined answer for every key that does not resolve.",
@@ -1218,8 +1218,8 @@ END AS country`
       ]
     },
     whyItMatters: {
-      en: "The checks verify in particular that joining the dimensions does not change the row count or the revenue unexpectedly. That equality is the proof that no fact was lost or duplicated.",
-      fr: "Les contrôles vérifient notamment que les jointures avec les dimensions ne modifient pas de manière inattendue le nombre de lignes ou le chiffre d’affaires. Cette égalité est la preuve qu’aucun fait n’a été perdu ni dupliqué."
+      en: "The check I care about most: joining the dimensions must change neither the row count nor the revenue. If both numbers hold, no fact was lost or duplicated.",
+      fr: "Le contrôle auquel je tiens le plus : joindre les dimensions ne doit changer ni le nombre de lignes ni le chiffre d’affaires. Si les deux chiffres tiennent, aucun fait n’a été perdu ni dupliqué."
     },
     keyIdea: {
       en: "Give every unresolved key a defined answer.",
@@ -1330,8 +1330,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       ]
     },
     whyItMatters: {
-      en: "Two of these questions have an obvious wrong answer that looks right. Both are recorded below, because the value of a modelled layer is that it makes the wrong answer avoidable, not impossible.",
-      fr: "Deux de ces questions ont une mauvaise réponse évidente qui a l’air juste. Les deux sont consignées ci-dessous, car l’intérêt d’une couche modélisée est de rendre la mauvaise réponse évitable, pas impossible."
+      en: "Two of these questions have an obvious answer that looks right and is wrong. I wrote both down below. A good model makes the wrong answer avoidable. It cannot make it impossible.",
+      fr: "Deux de ces questions ont une réponse évidente qui a l’air juste et qui est fausse. Je les ai notées ci-dessous. Un bon modèle rend la mauvaise réponse évitable. Il ne peut pas la rendre impossible."
     },
     keyIdea: {
       en: "A number without its caveat is a number someone will misuse.",
@@ -1411,12 +1411,12 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
     title: { en: "Test the project", fr: "Tester le projet" },
     duration: "~2 min",
     objective: {
-      en: "The tests are split into two groups: those that need no AWS access, and those that verify the behaviour of the lake once it is actually deployed.",
-      fr: "Les tests sont séparés en deux groupes : ceux qui ne nécessitent aucun accès AWS, et ceux qui vérifient le comportement du lac réellement déployé."
+      en: "Two groups of tests: the ones that need no AWS access, and the ones that check the lake once it is deployed.",
+      fr: "Deux groupes de tests : ceux qui n’ont besoin d’aucun accès AWS, et ceux qui vérifient le lac une fois déployé."
     },
     why: {
-      en: "This separation makes it possible to test the logic of the project quickly, then verify the integration with AWS separately.",
-      fr: "Cette séparation permet de tester rapidement la logique du projet, puis de vérifier séparément l’intégration avec AWS."
+      en: "The logic gets checked in seconds on every push. The AWS integration gets checked when a lake is actually running.",
+      fr: "La logique se vérifie en quelques secondes à chaque push. L’intégration AWS se vérifie quand un lac tourne réellement."
     },
     run: { cmd: "make test\nmake test-aws" },
     flow: ["make test", { en: "29 offline tests", fr: "29 tests hors ligne" }, "make test-aws", { en: "17 tests on the deployed lake", fr: "17 tests sur le lac déployé" }],
@@ -1435,8 +1435,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       ]
     },
     whyItMatters: {
-      en: "The most valuable tests here are not the row counts. They are the invariants: properties that must hold no matter what the data looks like.",
-      fr: "Les tests les plus utiles ici ne sont pas les décomptes de lignes. Ce sont les invariants : des propriétés qui doivent tenir quelle que soit la donnée."
+      en: "The tests I rely on most are not the row counts. They are the invariants: properties that must hold whatever the data looks like.",
+      fr: "Les tests sur lesquels je compte le plus ne sont pas les décomptes de lignes. Ce sont les invariants : des propriétés qui doivent tenir quelle que soit la donnée."
     },
     keyIdea: {
       en: "Test the logic offline, then the integration on AWS.",
@@ -1488,8 +1488,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       fr: "Une fois le parcours terminé, Terraform supprime les ressources qu’il a provisionnées."
     },
     why: {
-      en: "Destruction is part of the normal workflow of the project, which is designed to be rebuilt.",
-      fr: "La destruction fait partie du workflow normal du projet, qui est conçu pour être reconstruit."
+      en: "Tearing down is part of the normal run. The project is meant to be rebuilt from scratch.",
+      fr: "La destruction fait partie de l’exécution normale. Le projet est fait pour être reconstruit de zéro."
     },
     run: { cmd: "make destroy" },
     flow: ["make destroy", "terraform destroy", "0 resources in state"],
@@ -1508,8 +1508,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       ]
     },
     whyItMatters: {
-      en: "Destroying is part of the run, not an afterthought. The AWS validation is manual from start to finish, so nothing tears the infrastructure down on its own: <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> is one sequence, and the last command is the one that stops the billing.",
-      fr: "La destruction fait partie de l’exécution, pas d’un après-coup. La validation AWS est manuelle du début à la fin : rien ne démonte l’infrastructure tout seul. <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> forment une seule séquence, et la dernière commande est celle qui arrête la facturation."
+      en: "Nothing tears the infrastructure down on its own: the AWS validation is manual from start to finish. <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> is one sequence, and the last command is the one that stops the billing.",
+      fr: "Rien ne démonte l’infrastructure tout seul : la validation AWS est manuelle du début à la fin. <code>deploy</code>, <code>pipeline</code>, <code>analytics</code>, <code>test-aws</code>, <code>destroy</code> forment une seule séquence, et la dernière commande est celle qui arrête la facturation."
     },
     keyIdea: {
       en: "The project is designed to be rebuilt.",
@@ -1520,8 +1520,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
         type: "pitfall",
         title: { en: "force_destroy is what makes this work", fr: "C’est force_destroy qui rend cela possible" },
         text: {
-          en: "S3 refuses to delete a non-empty bucket. Without <code>force_destroy = true</code>, destroy fails halfway, the state no longer matches reality, and billable resources are left behind. It is correct here and genuinely dangerous in production.",
-          fr: "S3 refuse de supprimer un bucket non vide. Sans <code>force_destroy = true</code>, la destruction échoue à mi-parcours, le state ne correspond plus à la réalité, et des ressources facturables restent en place. C’est correct ici et réellement dangereux en production."
+          en: "S3 refuses to delete a non-empty bucket. Without <code>force_destroy = true</code>, destroy fails halfway, the state no longer matches reality, and billable resources are left behind. Fine here. Dangerous in production.",
+          fr: "S3 refuse de supprimer un bucket non vide. Sans <code>force_destroy = true</code>, la destruction échoue à mi-parcours, le state ne correspond plus à la réalité, et des ressources facturables restent en place. Acceptable ici. Dangereux en production."
         }
       }
     ]
@@ -1559,7 +1559,7 @@ export const dimensionalModel = {
    shown here is the query that answers the question itself. */
 
 export const questions = {
-  title: { en: "The six business questions", fr: "Les 6 questions métier" },
+  title: { en: "The six business questions", fr: "Les six questions métier" },
   note: {
     en: "The six queries below are the ones in <code>sql/05_analytics.sql</code>, shown without their comments. The figures beside each question are measured, not estimated.",
     fr: "Les six requêtes ci-dessous sont celles du fichier <code>sql/05_analytics.sql</code>, présentées sans leurs commentaires. Les chiffres associés à chaque question sont mesurés, pas estimés."
@@ -1567,7 +1567,7 @@ export const questions = {
   source: "sql/05_analytics.sql",
   tableTitle: {
     en: "The six questions and what they returned",
-    fr: "Les six questions et ce qu’elles ont retourné"
+    fr: "Les six questions et ce qu’elles ont renvoyé"
   },
   items: [
     {
@@ -1730,49 +1730,49 @@ ORDER BY revenue DESC;`,
 export const decisions = {
   title: { en: "Architecture decisions", fr: "Décisions d’architecture" },
   thesis: {
-    en: "Use the simplest tool that fits the workflow.",
-    fr: "Utiliser l’outil le plus simple adapté au workflow."
+    en: "No Airflow, no dbt, no remote state.",
+    fr: "Pas d’Airflow, pas de dbt, pas de state distant."
   },
   principle: {
-    en: "Do not add an orchestration platform simply because a project has several steps.",
-    fr: "N’ajoutez pas une plateforme d’orchestration simplement parce qu’un projet comporte plusieurs étapes."
+    en: "I did not leave them out to look minimal. I left them out because this project does not need them yet.",
+    fr: "Je ne les ai pas écartés pour faire minimaliste. Je les ai écartés parce que ce projet n’en a pas encore besoin."
   },
   items: [
     {
       tool: "Airflow",
       why: {
-        en: "The pipeline is short, linear and run by a shell script with an exit code. Here, adding Airflow would mainly create more infrastructure to manage.",
-        fr: "Le pipeline est court, linéaire et exécuté par un script shell avec un code de sortie. Ici, l’ajout d’Airflow créerait surtout une infrastructure supplémentaire à gérer."
+        en: "The pipeline is short and linear, and run_pipeline.sh already stops at the first failure. Airflow would mostly have been one more piece of infrastructure to run and maintain.",
+        fr: "Le pipeline est court et linéaire, et run_pipeline.sh s’arrête déjà à la première erreur. Airflow aurait surtout été une infrastructure de plus à faire tourner et à maintenir."
       },
       when: {
-        en: "Airflow would become relevant if the workflow had to handle many dependencies, scheduled runs, recovery after failure, more complex workflows, or more observability and operational management.",
-        fr: "Airflow deviendrait pertinent si le workflow devait gérer de nombreuses dépendances, des exécutions planifiées, des reprises après échec, des workflows plus complexes, ou davantage d’observabilité et de gestion opérationnelle."
+        en: "If the pipeline had to run on a schedule, retry after a failure, handle several dependencies or be monitored in production, the answer would be different.",
+        fr: "S’il fallait planifier le pipeline, le relancer automatiquement après un échec, gérer plusieurs dépendances ou le superviser en production, la réponse serait différente."
       },
       instead: { en: "run_pipeline.sh, called by the Makefile", fr: "run_pipeline.sh, appelé par le Makefile" }
     },
     {
       tool: "dbt",
       why: {
-        en: "The SQL is executed directly by Athena. The choice therefore depends on the real complexity of the project, not on the popularity of the tool.",
-        fr: "Le SQL est exécuté directement par Athena. Le choix dépend donc de la complexité réelle du projet, pas de la popularité de l’outil."
+        en: "Five SQL files, run in order by Athena. At that size, dbt would have added a tool and a project structure without solving a problem I actually had.",
+        fr: "Cinq fichiers SQL, exécutés dans l’ordre par Athena. À cette taille, dbt aurait ajouté un outil et une structure de projet sans résoudre un problème que j’avais réellement."
       },
       when: {
-        en: "dbt would become relevant once the project had many SQL models, dependencies between models, tests built into the transformation cycle, documentation, and a team maintaining and sharing the transformations.",
-        fr: "dbt deviendrait pertinent lorsque le projet comporterait de nombreux modèles SQL, des dépendances entre modèles, des tests intégrés au cycle de transformation, de la documentation, et une équipe amenée à maintenir et partager les transformations."
+        en: "With dozens of models depending on each other, or a team sharing the transformations, I would move to dbt.",
+        fr: "Avec des dizaines de modèles qui dépendent les uns des autres, ou une équipe qui partage les transformations, je passerais à dbt."
       },
       instead: { en: "Five numbered .sql files, run in order", fr: "Cinq fichiers .sql numérotés, exécutés dans l’ordre" }
     },
     {
       tool: { en: "Remote Terraform backend", fr: "Backend Terraform distant" },
       why: {
-        en: "The project uses local Terraform state.",
-        fr: "Le projet utilise un état Terraform local."
+        en: "I am the only one applying this infrastructure, and it is destroyed after each run. Local state, kept out of git, is enough.",
+        fr: "Je suis le seul à appliquer cette infrastructure, et elle est détruite après chaque exécution. Un state local, exclu de git, suffit."
       },
       when: {
-        en: "A remote backend becomes relevant when several people have to work on the same infrastructure, with shared state and appropriate locking.",
-        fr: "Un backend distant devient pertinent lorsque plusieurs personnes doivent travailler sur la même infrastructure, avec un état partagé et des mécanismes de verrouillage adaptés."
+        en: "As soon as a second person has to apply the same infrastructure, the state moves to a shared remote backend with locking.",
+        fr: "Dès qu’une deuxième personne doit appliquer la même infrastructure, le state passe sur un backend distant partagé, avec verrouillage."
       },
-      instead: { en: "Local state, git-ignored", fr: "État local, ignoré par git" }
+      instead: { en: "Local state, git-ignored", fr: "State local, ignoré par git" }
     }
   ]
 };
@@ -1784,8 +1784,8 @@ export const decisions = {
 export const reproducibility = {
   title: { en: "Built to be rebuilt", fr: "Conçu pour être reconstruit" },
   thesis: {
-    en: "Reproducibility is not only a property of the deployment. It is what lets us understand what the system actually does.",
-    fr: "La reproductibilité n’est pas seulement une propriété du déploiement. Elle permet de comprendre ce que fait réellement le système."
+    en: "If I can rebuild everything from scratch and get the same numbers, I can explain those numbers.",
+    fr: "Si je peux tout reconstruire de zéro et retrouver les mêmes chiffres, je peux expliquer ces chiffres."
   },
   componentsTitle: { en: "What the project rests on", fr: "Ce sur quoi repose le projet" },
   components: [
@@ -1801,10 +1801,10 @@ export const reproducibility = {
      { en: "manual, make test-aws", fr: "manuelle, make test-aws" }],
     [{ en: "Teardown", fr: "Destruction" }, "terraform destroy"]
   ],
-  claimsTitle: { en: "The guarantees sought", fr: "Les garanties recherchées" },
+  claimsTitle: { en: "What I check, and with what", fr: "Ce que je vérifie, et avec quoi" },
   claimsLead: {
-    en: "On every change, the project must make it possible to verify that:",
-    fr: "À chaque modification, le projet doit permettre de vérifier que :"
+    en: "Each claim has a command behind it:",
+    fr: "Chaque affirmation a une commande derrière elle :"
   },
   claims: [
     [{ en: "the infrastructure can be recreated", fr: "l’infrastructure peut être recréée" }, "terraform apply"],
@@ -1817,25 +1817,25 @@ export const reproducibility = {
   ci: {
     title: { en: "What CI actually does", fr: "Ce que fait réellement la CI" },
     body: {
-      en: "CI does not simply check that the files exist, it verifies the behaviour of the project. Two halves, and only one of them is automatic. <strong>The automatic half</strong> runs on every push and never touches AWS: Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> and tflint, ShellCheck on the shell scripts, the offline test suite, and the guards that stop Gold from reading Bronze. It needs no credentials and costs nothing. <strong>The AWS half is manual</strong>: <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, run against a real account when there is a reason to run them. Nothing deploys or bills on a schedule.",
-      fr: "La CI ne se contente pas de vérifier que les fichiers existent, elle vérifie le comportement du projet. Deux moitiés, dont une seule est automatique. <strong>La moitié automatique</strong> s’exécute à chaque push et ne touche jamais à AWS : Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> et tflint, ShellCheck sur les scripts, la suite de tests hors ligne, et les gardes qui empêchent la Gold de lire la Bronze. Elle ne demande aucune clé et ne coûte rien. <strong>La moitié AWS est manuelle</strong> : <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, lancées sur un compte réel quand il y a une raison de les lancer. Rien ne se déploie ni ne se facture sur un calendrier."
+      en: "CI checks behaviour, not just that files exist. Only half of the checks are automatic. <strong>The automatic half</strong> runs on every push and never touches AWS: Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> and tflint, ShellCheck on the shell scripts, the offline test suite, and the guards that stop Gold from reading Bronze. It needs no credentials and costs nothing. <strong>The AWS half is manual</strong>: <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, run against a real account when there is a reason to. Nothing deploys or bills on a schedule.",
+      fr: "La CI vérifie le comportement, pas seulement la présence des fichiers. Seule la moitié des contrôles est automatique. <strong>La moitié automatique</strong> s’exécute à chaque push et ne touche jamais à AWS : Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> et tflint, ShellCheck sur les scripts, la suite de tests hors ligne, et les gardes qui empêchent la Gold de lire la Bronze. Elle ne demande aucune clé et ne coûte rien. <strong>La moitié AWS est manuelle</strong> : <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, lancées sur un compte réel quand il y a une raison de les lancer. Rien ne se déploie ni ne se facture sur un calendrier."
     }
   },
-  traceTitle: { en: "What reproducibility buys", fr: "Ce que la reproductibilité apporte" },
+  traceTitle: { en: "What it lets me tell apart", fr: "Ce que cela me permet de distinguer" },
   traceLead: {
-    en: "A reproducible environment makes it possible to tell apart:",
-    fr: "Un environnement reproductible permet notamment de distinguer :"
+    en: "When a number moves, I can tell whether it comes from:",
+    fr: "Quand un chiffre bouge, je peux dire s’il vient :"
   },
   trace: [
-    { en: "what comes from the source data;", fr: "ce qui vient des données sources ;" },
-    { en: "what comes from the transformations;", fr: "ce qui vient des transformations ;" },
-    { en: "what comes from the infrastructure;", fr: "ce qui vient de l’infrastructure ;" },
-    { en: "what comes from the quality rules;", fr: "ce qui vient des règles de qualité ;" },
-    { en: "what comes from the business queries.", fr: "ce qui vient des requêtes métier." }
+    { en: "the source data;", fr: "des données sources ;" },
+    { en: "the transformations;", fr: "des transformations ;" },
+    { en: "the infrastructure;", fr: "de l’infrastructure ;" },
+    { en: "the quality rules;", fr: "des règles de qualité ;" },
+    { en: "or the business queries.", fr: "ou des requêtes métier." }
   ],
   traceClosing: {
-    en: "That traceability is what makes it possible to understand the results rather than simply observe them.",
-    fr: "C’est cette traçabilité qui permet de comprendre les résultats plutôt que de simplement les constater."
+    en: "That is the difference between explaining a result and just reporting it.",
+    fr: "C’est la différence entre expliquer un résultat et simplement le constater."
   }
 };
 
@@ -1846,10 +1846,10 @@ export const reproducibility = {
 export const summary = {
   title: { en: "In summary", fr: "En résumé" },
   thesis: {
-    en: "A reliable data pipeline is not just moving data from one system to another.",
-    fr: "Un pipeline Data fiable ne se résume pas à faire passer les données d’un système à un autre."
+    en: "Moving data from one system to another is the easy part.",
+    fr: "Faire passer des données d’un système à un autre, c’est la partie facile."
   },
-  lead: { en: "We have to know:", fr: "Il faut savoir :" },
+  lead: { en: "The real work is being able to say:", fr: "Le vrai travail, c’est de pouvoir dire :" },
   points: [
     { en: "what came in;", fr: "ce qui est entré ;" },
     { en: "what was removed;", fr: "ce qui a été retiré ;" },
@@ -1861,16 +1861,16 @@ export const summary = {
     { en: "how the infrastructure can be rebuilt or removed.", fr: "comment l’infrastructure peut être reconstruite ou supprimée." }
   ],
   stackLead: {
-    en: "The project uses a deliberately limited set of tools:",
-    fr: "Le projet utilise pour cela un ensemble volontairement limité d’outils :"
+    en: "With a deliberately short list of tools:",
+    fr: "Avec une liste d’outils volontairement courte :"
   },
   stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python", "pytest", "GitHub Actions"],
   stackNote: {
-    en: "What makes the project interesting is less the number of services used than the way they are assembled and verified.",
-    fr: "L’intérêt du projet est moins le nombre de services utilisés que la manière dont ils sont assemblés et vérifiés."
+    en: "The interesting part is not the number of services. It is how they fit together and how each result gets checked.",
+    fr: "L’intérêt n’est pas le nombre de services. C’est la façon dont ils s’assemblent et dont chaque résultat est vérifié."
   },
   closing: {
-    en: "Every figure is measured on the source files before any AWS resource exists, then verified by the test suite. The infrastructure is defined by Terraform. The transformations are defined in SQL. The workflow commands are standardised by the Makefile. The checks are automated by the tests. The environment can be destroyed and created again. That combination is what turns a simple data transformation exercise into a Data Engineering project that can genuinely be examined, explained and reproduced.",
-    fr: "Chaque chiffre est mesuré sur les fichiers sources avant l’existence de toute ressource AWS, puis vérifié par la suite des tests d’exécution. L’infrastructure est définie par Terraform. Les transformations sont définies en SQL. Les commandes du workflow sont standardisées par le Makefile. Les contrôles sont automatisés par les tests. L’environnement peut être détruit puis recréé. C’est cette combinaison qui permet de passer d’un simple exercice de transformation de données à un projet Data Engineering que l’on peut réellement examiner, expliquer et reproduire."
+    en: "Every figure was measured on the source files before any AWS resource existed, then checked by the tests. Terraform defines the infrastructure, SQL defines the transformations, the Makefile runs them and the tests check them. The whole environment can be destroyed and rebuilt. That is what I wanted to show: a pipeline someone else can examine, question and reproduce.",
+    fr: "Chaque chiffre a été mesuré sur les fichiers sources avant l’existence de la moindre ressource AWS, puis vérifié par les tests. Terraform définit l’infrastructure, le SQL définit les transformations, le Makefile les lance et les tests les vérifient. Tout l’environnement peut être détruit puis reconstruit. C’est ce que je voulais montrer : un pipeline que quelqu’un d’autre peut examiner, remettre en question et reproduire."
   }
 };
