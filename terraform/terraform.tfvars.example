@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (git-ignored) and edit before `make deploy`:
+#
+#   cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+#
+# Only budget_alert_email is required. Every other variable has a default in
+# variables.tf and is shown here so you can see what can be changed.
+
+# REQUIRED - replace with an address you can read. It receives the AWS Budgets
+# alerts and the SNS confirmation link for the CloudWatch alarm.
+
+project_name       = "ecommerce-datalake"
+aws_region         = "us-east-1"
+budget_limit_usd   = 20
+budget_alert_email = "you@example.com"

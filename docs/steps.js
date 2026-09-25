@@ -222,9 +222,9 @@ export const meta = {
     [{ en: "Catalog", fr: "Catalogue" }, "AWS Glue Data Catalog"],
     [{ en: "Engine", fr: "Moteur" }, "Amazon Athena"],
     [{ en: "Provisioning", fr: "Provisionnement" }, "Terraform"],
-    [{ en: "Interface", fr: "Interface" }, { en: "Makefile, 11 targets", fr: "Makefile, 11 cibles" }],
+    [{ en: "Interface", fr: "Interface" }, { en: "Makefile, one target per step", fr: "Makefile, une cible par étape" }],
     [{ en: "Orchestration", fr: "Orchestration" }, "run_pipeline.sh"],
-    [{ en: "Tests", fr: "Tests" }, { en: "26 offline + 17 on AWS", fr: "26 hors ligne + 17 sur AWS" }],
+    [{ en: "Tests", fr: "Tests" }, { en: "29 offline + 17 on AWS", fr: "29 hors ligne + 17 sur AWS" }],
     ["CI", { en: "GitHub Actions, offline checks",
              fr: "GitHub Actions, contrôles hors ligne" }],
     [{ en: "Region", fr: "Région" }, "us-east-1"],
@@ -398,9 +398,9 @@ export const howItRuns = {
   },
 
   /* Four cards, one vertical chain each. Only the commands that expand into
-     something worth drawing get a card. The full list of ten commands lives in
+     something worth drawing get a card. The full list of commands lives in
      the three families below, which is the reference, and the per-command
-     detail lives in the walkthrough step that runs it. Ten cards here produced
+     detail lives in the walkthrough step that runs it. One card per command produced
      a ragged grid and broke the code lines mid-word. */
   chainTitle: {
     en: "What a command actually triggers",
@@ -414,7 +414,7 @@ export const howItRuns = {
                                     { en: "read-only", fr: "lecture seule" }] },
     { cmd: "make test-aws", steps: ["make", "pytest -m aws",
                                     { en: "Athena queries", fr: "requêtes Athena" },
-                                    { en: "17 assertions", fr: "17 assertions" }] }
+                                    { en: "17 tests", fr: "17 tests" }] }
   ],
 
   familiesTitle: { en: "The three families of command", fr: "Les trois familles de commandes" },
@@ -430,7 +430,7 @@ export const howItRuns = {
       items: [
         { cmd: "make deploy",    what: { en: "Create the infrastructure", fr: "Créer l’infrastructure" } },
         { cmd: "make pipeline",  what: { en: "ingest, catalog, silver, gold", fr: "ingest, catalog, silver, gold" } },
-        { cmd: "make analytics", what: { en: "Answer the six business questions", fr: "Répondre aux six questions métier" } },
+        { cmd: "make analytics", what: { en: "Answer the six business questions, generate the report", fr: "Répondre aux six questions métier, générer le rapport" } },
         { cmd: "make test-aws",  what: { en: "Verify the deployed lake", fr: "Vérifier le lac déployé" } },
         { cmd: "make destroy",   what: { en: "Remove everything", fr: "Tout supprimer" } }
       ]
@@ -441,7 +441,7 @@ export const howItRuns = {
       note: { en: "Optional. None of these is part of the main pipeline.", fr: "Optionnelles. Aucune ne fait partie du pipeline principal." },
       items: [
         { cmd: "make quality",  what: { en: "Profile the raw data", fr: "Profiler les données brutes" } },
-        { cmd: "make test",     what: { en: "26 assertions, no AWS access", fr: "26 assertions, sans accès AWS" } },
+        { cmd: "make test",     what: { en: "29 tests, no AWS access", fr: "29 tests, sans accès AWS" } },
         { cmd: "make validate", what: { en: "Terraform format and syntax", fr: "Format et syntaxe Terraform" } },
         { cmd: "make fmt",      what: { en: "Reformat the Terraform files", fr: "Reformater les fichiers Terraform" } }
       ]
@@ -449,9 +449,12 @@ export const howItRuns = {
     {
       key: "docs",
       name: { en: "Consultation", fr: "Consultation" },
-      note: { en: "Serves this page locally.", fr: "Sert cette page en local." },
+      note: { en: "Local viewers. Neither recomputes anything or calls AWS.",
+              fr: "Consultation locale. Aucune ne recalcule quoi que ce soit ni n’appelle AWS." },
       items: [
-        { cmd: "make docs", what: "http://localhost:8000" }
+        { cmd: "make docs", what: { en: "This page, http://localhost:8000", fr: "Cette page, http://localhost:8000" } },
+        { cmd: "make analytics-view", what: { en: "Last analytics report, http://localhost:8001/report.html",
+                                              fr: "Dernier rapport analytique, http://localhost:8001/report.html" } }
       ]
     }
   ],
@@ -582,9 +585,9 @@ export const architecture = {
               fr: "La couche Gold constitue le modèle analytique final. Le modèle en étoile est prêt pour les analyses métier, et les contrôles vérifient notamment que les jointures avec les dimensions ne modifient pas de manière inattendue le nombre de lignes ou le chiffre d’affaires." } },
     { key: "results", path: "athena-results/",
       title: { en: "Athena results", fr: "Résultats Athena" },
-      volume: { en: "query output", fr: "sorties de requêtes" },
-      text: { en: "This prefix holds the result sets generated by Athena.",
-              fr: "Ce préfixe contient les résultats générés par Athena." } }
+      volume: { en: "query output + reports", fr: "sorties de requêtes + rapports" },
+      text: { en: "<code>queries/</code> holds the result files Athena writes for every query. <code>analytics/</code> holds the business report generated by <code>make analytics</code>: one folder per run, plus <code>latest/</code>.",
+              fr: "<code>queries/</code> contient les fichiers de résultats écrits par Athena pour chaque requête. <code>analytics/</code> contient le rapport métier généré par <code>make analytics</code> : un dossier par exécution, plus <code>latest/</code>." } }
   ],
   closing: {
     en: "The project stays deliberately compact. Terraform owns the infrastructure. Athena provides the SQL engine. Glue provides the metadata. S3 provides the storage. Python and pytest verify the behaviour. GitHub Actions automates the checks. Each component has an identifiable role. The result is not an architecture designed to cover every possible case. It is an architecture suited to this workflow, with choices explicit enough to be challenged when the constraints change.",
@@ -714,23 +717,23 @@ export const steps = [
     flow: [
       "uv sync",
       "make test",
-      { en: "26 offline assertions", fr: "26 assertions hors ligne" },
+      { en: "29 offline tests", fr: "29 tests hors ligne" },
       "make validate",
       "terraform fmt -check",
       "terraform init -backend=false",
       "terraform validate"
     ],
     whatHappens: {
-      en: "<code>uv sync</code> creates the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>. It applies the project’s Python 3.13 requirement and installs the locked test dependencies. <code>make test</code> then runs the 26 assertions that read the source files and the SQL. They do not contact AWS. <code>make validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials.",
-      fr: "<code>uv sync</code> crée l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>. Il applique la contrainte Python 3.13 du projet et installe les dépendances de test verrouillées. <code>make test</code> exécute ensuite les 26 assertions qui lisent les fichiers sources et le SQL. Elles ne contactent pas AWS. <code>make validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS."
+      en: "<code>uv sync</code> creates the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>. It applies the project’s Python 3.13 requirement and installs the locked test dependencies. <code>make test</code> then runs the 29 offline tests: they read the source files, the SQL and the repository configuration, and run the report generator on sample Athena results. They do not contact AWS. <code>make validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials.",
+      fr: "<code>uv sync</code> crée l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>. Il applique la contrainte Python 3.13 du projet et installe les dépendances de test verrouillées. <code>make test</code> exécute ensuite les 29 tests hors ligne : ils lisent les fichiers sources, le SQL et la configuration du dépôt, et font tourner le générateur de rapport sur des résultats Athena d’exemple. Ils ne contactent pas AWS. <code>make validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS."
     },
     check: {
       caption: { en: "Before going further", fr: "Avant d’aller plus loin" },
       rows: [
         [{ en: "Required tools", fr: "Outils nécessaires" }, "git, make, terraform, uv, jq"],
-        ["uv run python --version", "Python 3.13.5"],
+        ["uv run python --version", "Python 3.13.x"],
         ["uv run pytest --version", "pytest 9.1.1"],
-        ["make test", "26 passed, 17 deselected"],
+        ["make test", "29 passed, 17 deselected"],
         [{ en: "AWS resources created", fr: "Ressources AWS créées" }, { en: "none at this stage", fr: "aucune à ce stade" }],
         [{ en: "Expected cost", fr: "Coût attendu" }, "$0.00"]
       ]
@@ -787,7 +790,7 @@ export const steps = [
       caption: { en: "After the apply", fr: "Après le apply" },
       rows: [
         [{ en: "Bucket", fr: "Bucket" }, "ecommerce-datalake-&lt;suffix&gt;"],
-        [{ en: "Prefixes", fr: "Préfixes" }, "bronze/ silver/ gold/ athena-results/"],
+        [{ en: "Prefixes", fr: "Préfixes" }, "bronze/ silver/ gold/ athena-results/{queries,analytics}/"],
         [{ en: "Catalog", fr: "Catalogue" }, "AWS Glue Data Catalog"],
         [{ en: "Guardrails", fr: "Garde-fous" }, { en: "Budgets, SNS, CloudWatch", fr: "Budgets, SNS, CloudWatch" }],
         [{ en: "Console clicks", fr: "Clics dans la console" }, "0"]
@@ -806,12 +809,13 @@ export const steps = [
         type: "code",
         caption: "terraform/main.tf",
         lang: "hcl",
-        does: { en: "Creates the bucket and its four zone prefixes.", fr: "Crée le bucket et ses quatre préfixes de zone." },
+        does: { en: "Creates the bucket and its zone prefixes.", fr: "Crée le bucket et ses préfixes de zone." },
         matters: {
           en: "<code>force_destroy</code> is what makes step 10 work. S3 refuses to delete a non-empty bucket, so without this line the teardown fails halfway and leaves billable resources behind.",
           fr: "<code>force_destroy</code> est ce qui fait fonctionner l’étape 10. S3 refuse de supprimer un bucket non vide : sans cette ligne, la destruction échoue à mi-parcours et laisse des ressources facturables."
         },
-        expect: { en: "4 objects created, one per zone.", fr: "4 objets créés, un par zone." },
+        expect: { en: "One empty marker object per zone, plus <code>queries/</code> and <code>analytics/</code> under <code>athena-results/</code>.",
+                  fr: "Un objet marqueur vide par zone, plus <code>queries/</code> et <code>analytics/</code> sous <code>athena-results/</code>." },
         text: `resource "aws_s3_bucket" "datalake" {
   bucket = local.bucket_name
 
@@ -821,9 +825,17 @@ export const steps = [
 }
 
 resource "aws_s3_object" "zones" {
-  for_each = toset(["bronze/", "silver/", "gold/", "athena-results/"])
-  bucket   = aws_s3_bucket.datalake.id
-  key      = each.value
+  for_each = toset([
+    "bronze/",
+    "silver/",
+    "gold/",
+    "athena-results/",
+    "athena-results/queries/",
+    "athena-results/analytics/",
+  ])
+
+  bucket = aws_s3_bucket.datalake.id
+  key    = each.value
 }`
       },
       {
@@ -832,6 +844,13 @@ resource "aws_s3_object" "zones" {
         text: {
           en: "The email subscription is created in state <code>PendingConfirmation</code>. Until you click the link AWS sends, the alarm fires into the void. Terraform reports success either way, because from its point of view the subscription exists.",
           fr: "L’abonnement e-mail est créé à l’état <code>PendingConfirmation</code>. Tant que vous n’avez pas cliqué sur le lien envoyé par AWS, l’alarme se déclenche dans le vide. Terraform signale un succès dans les deux cas, car de son point de vue l’abonnement existe."
+        }
+      },
+      {
+        type: "note",
+        text: {
+          en: "Terraform also creates a least-privilege pipeline role that trusts the identity running <code>terraform apply</code>. How it is used depends on that identity. As an IAM user, <code>run_pipeline.sh</code> assumes the role for one hour, so every pipeline step runs with least privilege. If you already work through an assumed role (AWS SSO, <code>assume-role</code>, CI OIDC), the script does not chain roles: it runs with your current role, which then needs S3, Glue and Athena access to the project resources. <code>make test-aws</code> always runs with your current identity.",
+          fr: "Terraform crée aussi un rôle de pipeline au moindre privilège, qui fait confiance à l’identité qui lance <code>terraform apply</code>. Son usage dépend de cette identité. Avec un utilisateur IAM, <code>run_pipeline.sh</code> assume le rôle pour une heure : chaque étape du pipeline s’exécute alors au moindre privilège. Si vous travaillez déjà via un rôle assumé (AWS SSO, <code>assume-role</code>, OIDC en CI), le script n’enchaîne pas les rôles : il s’exécute avec votre rôle courant, qui doit alors disposer des accès S3, Glue et Athena aux ressources du projet. <code>make test-aws</code> s’exécute toujours avec votre identité courante."
         }
       }
     ]
@@ -1274,10 +1293,11 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
         fr: "Distinct de make pipeline. Le modèle peut être reconstruit sans relancer l’analyse, et l’analyse relancée sans reconstruire le modèle."
       }
     },
-    flow: ["make analytics", "run_pipeline.sh analytics", "sql/05_analytics.sql"],
+    flow: ["make analytics", "run_pipeline.sh analytics", "sql/05_analytics.sql",
+           "generate_analytics_report.py", "HTML · Markdown · JSON · CSV"],
     whatHappens: {
-      en: "The analytical queries run against the Gold tables. Athena writes the result sets to the <code>athena-results/</code> prefix, where they can be read from the console or with <code>aws athena get-query-results</code>.",
-      fr: "Les requêtes analytiques s’exécutent sur les tables Gold. Athena écrit les jeux de résultats dans le préfixe <code>athena-results/</code>, où ils peuvent être lus depuis la console ou avec <code>aws athena get-query-results</code>."
+      en: "The 12 statements of <code>sql/05_analytics.sql</code>, grouped under the six business questions, run against the Gold tables. Athena writes its native result files to <code>athena-results/queries/</code>, and the script saves each result as JSON. <code>scripts/generate_analytics_report.py</code> then turns them into one report in four formats: HTML to read, Markdown to share, JSON for programmatic use, CSV for a spreadsheet. The report is uploaded to <code>athena-results/analytics/&lt;run&gt;/</code> and <code>athena-results/analytics/latest/</code>, and copied to <code>reports/</code> on your machine.",
+      fr: "Les 12 requêtes de <code>sql/05_analytics.sql</code>, regroupées sous les six questions métier, s’exécutent sur les tables Gold. Athena écrit ses fichiers de résultats natifs dans <code>athena-results/queries/</code>, et le script enregistre chaque résultat en JSON. <code>scripts/generate_analytics_report.py</code> les transforme ensuite en un rapport sous quatre formats : HTML pour la lecture, Markdown pour le partage, JSON pour un usage programmatique, CSV pour un tableur. Le rapport est déposé dans <code>athena-results/analytics/&lt;run&gt;/</code> et <code>athena-results/analytics/latest/</code>, et copié dans <code>reports/</code> sur votre poste."
     },
     check: {
       caption: { en: "The six questions", fr: "Les six questions" },
@@ -1299,6 +1319,39 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       fr: "Un chiffre sans sa réserve est un chiffre que quelqu’un utilisera de travers."
     },
     blocks: [
+      {
+        type: "code",
+        caption: "reports/",
+        lang: "text",
+        does: { en: "What one run of make analytics leaves on your machine.",
+                fr: "Ce qu’une exécution de make analytics laisse sur votre poste." },
+        matters: {
+          en: "Each run keeps its own folder with the raw Athena results, so a figure in the report can be traced back to the query that produced it. The same files are archived in S3.",
+          fr: "Chaque exécution conserve son propre dossier avec les résultats Athena bruts : un chiffre du rapport peut donc être rattaché à la requête qui l’a produit. Les mêmes fichiers sont archivés dans S3."
+        },
+        text: `reports/
+  analytics_<YYYY-MM-DD_HHMMSS>/
+    raw/<query>.json
+    report.html  report.md  report.json  report.csv
+  report.html
+  analytics_latest.md  analytics_latest.json  analytics_latest.csv`
+      },
+      {
+        type: "code",
+        caption: "Makefile",
+        lang: "bash",
+        does: { en: "Opens the last local report in the browser.",
+                fr: "Ouvre le dernier rapport local dans le navigateur." },
+        matters: {
+          en: "<code>make analytics-view</code> recomputes nothing and calls neither Athena nor any other AWS service. It only serves the <code>reports/</code> folder, which is convenient for a demonstration. To refresh the figures, run <code>make analytics</code> again.",
+          fr: "<code>make analytics-view</code> ne recalcule rien et n’appelle ni Athena ni aucun autre service AWS. Il sert uniquement le dossier <code>reports/</code>, ce qui est pratique pour une démonstration. Pour actualiser les chiffres, relancez <code>make analytics</code>."
+        },
+        expect: {
+          en: "http://localhost:8001/report.html, in French like the SQL model. Stop with Ctrl+C.",
+          fr: "http://localhost:8001/report.html, en français comme le modèle SQL. Arrêt avec Ctrl+C."
+        },
+        text: "make analytics-view"
+      },
       {
         type: "pitfall",
         title: { en: "Counting orders by invoice number overcounts by 125%",
@@ -1347,16 +1400,16 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       fr: "Cette séparation permet de tester rapidement la logique du projet, puis de vérifier séparément l’intégration avec AWS."
     },
     run: { cmd: "make test\nmake test-aws" },
-    flow: ["make test", "26 offline assertions", "make test-aws", "17 assertions on the deployed lake"],
+    flow: ["make test", { en: "29 offline tests", fr: "29 tests hors ligne" }, "make test-aws", { en: "17 tests on the deployed lake", fr: "17 tests sur le lac déployé" }],
     whatHappens: {
-      en: "<code>make test</code> runs 26 assertions that read the source files and the SQL text. <code>make test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
-      fr: "<code>make test</code> exécute 26 assertions qui lisent les fichiers sources et le texte SQL. <code>make test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
+      en: "<code>make test</code> runs 29 tests that read the source files, the SQL text and the repository configuration, and check the report generator. <code>make test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
+      fr: "<code>make test</code> exécute 29 tests qui lisent les fichiers sources, le texte SQL et la configuration du dépôt, et vérifient le générateur de rapport. <code>make test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
     },
     check: {
       caption: { en: "What the suite covers", fr: "Ce que couvre la suite" },
       rows: [
-        [{ en: "Offline assertions", fr: "Assertions hors ligne" }, "26"],
-        [{ en: "AWS assertions", fr: "Assertions AWS" }, "17"],
+        [{ en: "Offline tests", fr: "Tests hors ligne" }, "29"],
+        [{ en: "AWS tests", fr: "Tests AWS" }, "17"],
         [{ en: "Bronze fidelity", fr: "Fidélité Bronze" }, { en: "7,956 / 130 / 130", fr: "7 956 / 130 / 130" }],
         ["Silver", { en: "7,547 rows, 10 countries, 376 orphans kept", fr: "7 547 lignes, 10 pays, 376 orphelines conservées" }],
         ["Gold", { en: "no fan-out, no unhandled orphan key", fr: "aucun fan-out, aucune clé orpheline non traitée" }]
@@ -1723,7 +1776,7 @@ export const reproducibility = {
     [{ en: "Python environment", fr: "Environnement Python" },
      { en: "Reproducible Python 3.13 environment via pyproject.toml and uv.lock",
        fr: "Environnement Python 3.13 reproductible via pyproject.toml et uv.lock" }],
-    [{ en: "Tests", fr: "Tests" }, { en: "26 offline tests + 17 AWS tests", fr: "26 tests hors ligne + 17 tests AWS" }],
+    [{ en: "Tests", fr: "Tests" }, { en: "29 offline tests + 17 AWS tests", fr: "29 tests hors ligne + 17 tests AWS" }],
     ["CI", { en: "GitHub Actions, offline only", fr: "GitHub Actions, hors ligne uniquement" }],
     [{ en: "AWS validation", fr: "Validation AWS" },
      { en: "manual, make test-aws", fr: "manuelle, make test-aws" }],
