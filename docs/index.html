@@ -6,7 +6,8 @@
 <title>E-commerce Data Lake on AWS · Technical case study</title>
 <meta name="description" content="A reproducible data engineering lab: medallion architecture on S3, Glue and Athena, provisioned with Terraform, verified by tests, destroyed on demand.">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#111110">
+<meta name="theme-color" content="#f3f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0f12" media="(prefers-color-scheme: dark)">
 
 <meta property="og:type" content="article">
 <meta property="og:title" content="E-commerce Data Lake on AWS">
@@ -17,10 +18,12 @@
      storage keys app.js uses. Kept inline, tiny and synchronous on purpose:
      an external file would arrive too late to prevent a flash of the wrong
      theme. It resolves initial state only; all interactive logic stays in
-     app.js. -->
+     app.js. The "js" class lets the stylesheet hide reveal-on-scroll content
+     only when a script is there to reveal it. -->
 <script>
 (function () {
   var d = document.documentElement;
+  d.className += " js";
   try {
     var storedTheme = localStorage.getItem("ecommerce-datalake-theme");
     var sysDark = window.matchMedia &&
@@ -47,34 +50,36 @@
 })();
 </script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Fonts are self-hosted (Geist and Geist Mono, SIL OFL, see fonts/LICENSE.txt):
+     no third-party request, no layout shift from a late web font. -->
+<link rel="preload" href="fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/geist-mono.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111110'/%3E%3Crect x='6' y='7' width='20' height='5' fill='%23FBF7F1'/%3E%3Crect x='6' y='14' width='20' height='5' fill='%238A8780'/%3E%3Crect x='6' y='21' width='20' height='5' fill='%23EE4B23'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23101316'/%3E%3Crect x='7' y='8' width='18' height='4' rx='1' fill='%23f3f4f5'/%3E%3Crect x='7' y='14' width='18' height='4' rx='1' fill='%23868d95'/%3E%3Crect x='7' y='20' width='18' height='4' rx='1' fill='%23ef6a24'/%3E%3C/svg%3E">
 </head>
 <body>
 
 <!-- ==========================================================================
-     This file is the structural shell only. Every sentence, figure and label
-     the reader sees is authored in steps.js and injected by app.js, so the
-     content cannot desynchronise from the navigation. Sections carry their
-     landmarks and headings here so the document outline is correct even
-     before JavaScript runs.
+     Structural shell only. Every sentence, figure and label the reader sees
+     is authored in steps.js and injected by app.js, so the content cannot
+     desynchronise from the navigation. Landmarks and headings live here so
+     the document outline is correct before JavaScript runs.
      ========================================================================== -->
 
 <a class="skip" id="skip-link" href="#walkthrough">Skip to the walkthrough</a>
 
-<header class="site-head">
-  <div class="site-head-in">
-    <a class="wordmark" id="wordmark" href="#top"></a>
-    <nav class="site-nav" id="site-nav" aria-label="Sections"></nav>
+<header class="hdr" id="hdr">
+  <div class="hdr-in">
+    <a class="brand" id="wordmark" href="#top">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="brand-text" id="wordmark-text"></span>
+    </a>
 
-    <!-- Two controls, drawn in the same language as the rest of the header:
-         1px rules, monospace, uppercase, no radius, no shadow. -->
-    <div class="head-tools">
-      <div class="segmented" role="group" id="lang-switch"></div>
-      <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false">
+    <nav class="hdr-nav" id="site-nav" aria-label="Sections"></nav>
+
+    <div class="hdr-tools">
+      <div class="seg" role="group" id="lang-switch"></div>
+      <button class="icon-btn" id="theme-toggle" type="button" aria-pressed="false">
         <svg viewBox="0 0 24 24" class="i-sun" aria-hidden="true">
           <circle cx="12" cy="12" r="4.2"/>
           <path d="M12 2.6v2.1M12 19.3v2.1M4.3 4.3l1.5 1.5M18.2 18.2l1.5 1.5M2.6 12h2.1M19.3 12h2.1M4.3 19.7l1.5-1.5M18.2 5.8l1.5-1.5"/>
@@ -82,315 +87,315 @@
         <svg viewBox="0 0 24 24" class="i-moon" aria-hidden="true">
           <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z"/>
         </svg>
-        <span id="theme-toggle-text"></span>
+        <span class="sr" id="theme-toggle-text"></span>
       </button>
-      <a class="head-cta arrow" id="head-cta" href="#" rel="noopener"></a>
+      <a class="hdr-src" id="head-cta" href="#" rel="noopener"></a>
+      <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span class="menu-lines" aria-hidden="true"><i></i><i></i></span>
+        <span id="menu-btn-text"></span>
+      </button>
     </div>
   </div>
+  <div class="progress" aria-hidden="true"><span></span></div>
 </header>
 
-<main class="sheet" id="top">
+<main id="top">
 
-  <!-- 00 · COVER ------------------------------------------------------- -->
-  <section class="band cover" aria-labelledby="cover-title">
-    <div class="cover-main">
-      <p class="cover-eyebrow" id="cover-eyebrow"></p>
-      <h1 id="cover-title"></h1>
-      <p class="cover-tagline" id="cover-tagline"></p>
-      <p class="cover-lede" id="cover-lede"></p>
-      <div class="cover-zones" id="cover-zones"></div>
-      <div class="cover-explain" id="cover-explain"></div>
-      <ul class="stack-line" id="cover-stack" aria-label="Technology stack"></ul>
-      <div class="cover-actions" id="cover-actions"></div>
-    </div>
-    <div class="spec">
-      <div class="spec-head">
-        <span class="mono" id="spec-title"></span>
-        <span class="mono" id="spec-ref"></span>
+  <!-- COVER ------------------------------------------------------------- -->
+  <section class="cover" aria-labelledby="cover-title">
+    <div class="wrap cover-grid">
+      <div class="cover-main">
+        <p class="cover-eyebrow" id="cover-eyebrow"></p>
+        <h1 id="cover-title"></h1>
+        <p class="cover-tagline" id="cover-tagline"></p>
+        <div class="cover-actions" id="cover-actions"></div>
       </div>
-      <dl id="spec-list"></dl>
+
+      <aside class="spec" aria-labelledby="spec-title">
+        <div class="spec-head">
+          <h2 class="spec-title" id="spec-title"></h2>
+        </div>
+        <dl class="spec-grid" id="spec-list"></dl>
+        <div class="spec-stack">
+          <span class="spec-k" id="cover-stack-label"></span>
+          <ul class="chips" id="cover-stack"></ul>
+        </div>
+      </aside>
+
+      <ol class="ledger" id="cover-ledger"></ol>
+    </div>
+
+    <div class="wrap brief">
+      <p class="brief-lede" id="cover-lede"></p>
+      <div class="brief-zones" id="cover-zones"></div>
+      <div class="brief-explain" id="cover-explain"></div>
     </div>
   </section>
 
-  <!-- 01 · THE PROBLEM ------------------------------------------------- -->
+  <!-- THE PROBLEM ------------------------------------------------------- -->
   <section class="band" id="challenge" aria-labelledby="challenge-h">
-    <div class="band-head">
-      <span class="band-n">01</span>
-      <div>
-        <h2 id="challenge-h"><span id="challenge-title"></span></h2>
-      </div>
+    <div class="wrap">
+      <h2 class="h2 rv" id="challenge-h"><span id="challenge-title"></span></h2>
+      <p class="statement rv" id="challenge-question"></p>
+      <div class="challenge-body rv" id="challenge-body"></div>
     </div>
-    <div class="challenge-grid">
-      <p class="statement" id="challenge-question"></p>
-      <div class="challenge-body" id="challenge-body"></div>
-    </div>
-
-    <!-- The illustration is pinned to the source so it renders before the
-         module runs; app.js only supplies the localised alt and caption. -->
-    <figure class="flow-plate">
-      <div class="flow-plate-body">
+    <figure class="wrap wide plate rv">
+      <div class="plate-paper">
         <img id="flow-figure" src="data-pipeline.webp" width="1400" height="933"
              alt="" loading="lazy" decoding="async">
       </div>
-      <figcaption class="flow-plate-cap" id="flow-caption"></figcaption>
+      <figcaption class="plate-cap" id="flow-caption"></figcaption>
     </figure>
   </section>
 
-  <!-- 02 · TWO VIEWS --------------------------------------------------- -->
+  <!-- TWO VIEWS --------------------------------------------------------- -->
   <section class="band" id="views" aria-labelledby="views-h">
-    <div class="band-head">
-      <span class="band-n">02</span>
-      <div>
-        <h2 id="views-h"><span id="views-title"></span></h2>
-        <p class="band-note" id="views-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="views-h"><span id="views-title"></span></h2>
+        <p class="head-note" id="views-note"></p>
       </div>
+      <div class="tracks" id="views-grid"></div>
+      <p class="aside-note rv" id="views-explanation"></p>
     </div>
-    <div class="views" id="views-grid"></div>
-    <p class="views-explanation" id="views-explanation"></p>
   </section>
 
-  <!-- 03 · FIGURES ----------------------------------------------------- -->
+  <!-- FIGURES ----------------------------------------------------------- -->
   <section class="band" id="numbers" aria-labelledby="numbers-h">
-    <div class="band-head">
-      <span class="band-n">03</span>
-      <div>
-        <h2 id="numbers-h"><span id="numbers-title"></span></h2>
-        <p class="band-note" id="numbers-note"></p>
+    <div class="wrap numbers-grid">
+      <div class="numbers-intro rv">
+        <h2 class="h2" id="numbers-h"><span id="numbers-title"></span></h2>
+        <p class="head-note" id="numbers-note"></p>
+        <p class="pull" id="numbers-pullquote"></p>
       </div>
+      <ol class="metrics" id="numbers-list"></ol>
+      <p class="aside-note numbers-closing rv" id="numbers-closing"></p>
     </div>
-    <p class="pullquote" id="numbers-pullquote"></p>
-    <ol class="metrics" id="numbers-list"></ol>
-    <p class="views-explanation" id="numbers-closing"></p>
   </section>
 
-  <!-- 04 · HOW IT RUNS ------------------------------------------------- -->
+  <!-- HOW IT RUNS ------------------------------------------------------- -->
   <section class="band" id="how-it-runs" aria-labelledby="how-h">
-    <div class="band-head">
-      <span class="band-n">04</span>
-      <div>
-        <h2 id="how-h"><span id="how-title"></span></h2>
-        <p class="band-note" id="how-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="how-h"><span id="how-title"></span></h2>
+        <p class="head-note" id="how-note"></p>
       </div>
+
+      <div class="stackrows rv" id="how-layers"></div>
+      <p class="principle rv" id="how-make-note"></p>
+
+      <h3 class="h3 rv" id="how-chains-title"></h3>
+      <div class="traces" id="how-chains"></div>
+
+      <div class="split-verdict rv" id="how-warning" role="note"></div>
+
+      <h3 class="h3 rv" id="how-families-title"></h3>
+      <p class="sub-note rv" id="how-families-note"></p>
+      <div class="families" id="how-families"></div>
     </div>
-
-    <div class="layers-table" id="how-layers"></div>
-    <p class="callout" id="how-make-note"></p>
-
-    <h3 class="sub-h" id="how-chains-title"></h3>
-    <div class="chain-cards" id="how-chains"></div>
-
-    <div class="warning" id="how-warning" role="note"></div>
-
-    <h3 class="sub-h" id="how-families-title"></h3>
-    <p class="sub-note" id="how-families-note"></p>
-    <div class="families" id="how-families"></div>
   </section>
 
-  <!-- 05 · DATA INTEGRITY ---------------------------------------------- -->
+  <!-- DATA INTEGRITY ---------------------------------------------------- -->
   <section class="band integrity" id="integrity" aria-labelledby="integrity-h">
-    <div class="band-head">
-      <span class="band-n">05</span>
-      <div>
-        <h2 id="integrity-h"><span id="integrity-title"></span></h2>
-        <p class="band-note" id="integrity-kicker"></p>
-      </div>
-    </div>
-    <div class="integrity-grid">
-      <div class="integrity-figure">
-        <p class="big-pct" id="integrity-figure"></p>
-        <p class="big-pct-caption" id="integrity-caption"></p>
-        <div class="figure-pair" id="integrity-pair"></div>
+    <div class="wrap integrity-grid">
+      <div class="integrity-side">
+        <div class="integrity-sticky rv">
+          <p class="kicker" id="integrity-kicker"></p>
+          <h2 class="h2" id="integrity-h"><span id="integrity-title"></span></h2>
+          <p class="big-figure" id="integrity-figure"></p>
+          <p class="big-figure-cap" id="integrity-caption"></p>
+          <div class="figure-pair" id="integrity-pair"></div>
+        </div>
       </div>
       <div class="integrity-body" id="integrity-body"></div>
     </div>
   </section>
 
-  <!-- 06 · ARCHITECTURE ------------------------------------------------ -->
+  <!-- ARCHITECTURE ------------------------------------------------------ -->
   <section class="band" id="architecture" aria-labelledby="architecture-h">
-    <div class="band-head">
-      <span class="band-n">06</span>
-      <div>
-        <h2 id="architecture-h"><span id="architecture-title"></span></h2>
-        <p class="band-note" id="architecture-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="architecture-h"><span id="architecture-title"></span></h2>
+        <p class="head-note" id="architecture-note"></p>
       </div>
     </div>
-
-    <figure class="plate-frame">
-      <figcaption class="plate-caption-bar">
-        <span class="mono" id="plate-label"></span>
-        <span class="mono">S3 · Glue · Athena · Terraform</span>
+    <figure class="wrap wide plate rv">
+      <figcaption class="plate-bar">
+        <span id="plate-label"></span>
+        <span class="plate-bar-r">S3 · Glue · Athena · Terraform</span>
       </figcaption>
-      <div class="plate-body" id="svg-holder">
+      <div class="plate-paper plate-svg" id="svg-holder">
         <noscript><img src="architecture.svg" alt="Target architecture: three source files land in the bronze prefix of one S3 bucket, are transformed by Athena CTAS into silver then gold, and answer six business questions. Glue Data Catalog and Athena serve the whole bucket, and Terraform provisions all of it."></noscript>
       </div>
-      <p class="plate-desc" id="svg-caption"></p>
+      <p class="plate-cap" id="svg-caption"></p>
     </figure>
-
-    <ul class="annotations zones" id="zones"></ul>
-    <p class="views-explanation" id="architecture-closing"></p>
+    <div class="wrap">
+      <ul class="zones" id="zones"></ul>
+      <p class="aside-note rv" id="architecture-closing"></p>
+    </div>
   </section>
 
-  <!-- 07 · MEDALLION --------------------------------------------------- -->
+  <!-- MEDALLION --------------------------------------------------------- -->
   <section class="band" id="medallion" aria-labelledby="medallion-h">
-    <div class="band-head">
-      <span class="band-n">07</span>
-      <div>
-        <h2 id="medallion-h"><span id="medallion-title"></span></h2>
-        <p class="band-note" id="medallion-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="medallion-h"><span id="medallion-title"></span></h2>
+        <p class="head-note" id="medallion-note"></p>
       </div>
+      <ol class="medallion" id="layers"></ol>
     </div>
-    <ol class="layers" id="layers"></ol>
   </section>
 
-  <!-- 08 · WALKTHROUGH ------------------------------------------------- -->
-  <section class="band" id="walkthrough" aria-labelledby="walkthrough-h">
-    <div class="band-head">
-      <span class="band-n">08</span>
-      <div>
-        <h2 id="walkthrough-h"><span id="walkthrough-title"></span></h2>
-        <p class="band-note" id="walkthrough-note"></p>
+  <!-- WALKTHROUGH ------------------------------------------------------- -->
+  <section class="band walk-band" id="walkthrough" aria-labelledby="walkthrough-h">
+    <div class="wrap walk-intro">
+      <div class="head rv">
+        <h2 class="h2" id="walkthrough-h"><span id="walkthrough-title"></span></h2>
+        <p class="head-note" id="walkthrough-note"></p>
       </div>
+      <div class="quickstart rv" id="quickstart"></div>
     </div>
 
-    <div class="quickstart" id="quickstart"></div>
+    <div class="wrap">
+      <nav class="timeline" id="stage-rail" aria-label="Stages of the walkthrough"></nav>
+    </div>
 
-    <div class="zone-rail" id="stage-rail" aria-label="Stages of the walkthrough"></div>
-
-    <div class="walk">
+    <div class="wrap walk">
       <nav class="walk-nav" id="walk-nav" aria-label="Walkthrough steps">
         <div class="walk-nav-in">
-          <span class="mono lbl" id="steps-label"></span>
+          <p class="walk-nav-lbl" id="steps-label"></p>
           <ol id="step-list"></ol>
           <p class="walk-hint" id="walk-hint"></p>
         </div>
       </nav>
 
-      <article class="walk-panel" id="step-panel" tabindex="-1" aria-live="polite">
-        <!-- rendered by app.js -->
-      </article>
-    </div>
+      <div class="walk-main">
+        <article class="step" id="step-panel" tabindex="-1" aria-live="polite">
+          <!-- rendered by app.js -->
+        </article>
 
-    <div class="pager">
-      <button id="prev" type="button"></button>
-      <span class="pager-label" id="pager-label"></span>
-      <button id="next" type="button"></button>
+        <div class="pager">
+          <button class="pager-btn prev" id="prev" type="button"></button>
+          <span class="pager-label" id="pager-label"></span>
+          <button class="pager-btn next" id="next" type="button"></button>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- 09 · DIMENSIONAL MODEL ------------------------------------------- -->
+  <!-- DIMENSIONAL MODEL ------------------------------------------------- -->
   <section class="band" id="dimensional-model" aria-labelledby="dimensional-model-h">
-    <div class="band-head">
-      <span class="band-n">09</span>
-      <div>
-        <h2 id="dimensional-model-h"><span id="dimensional-model-title"></span></h2>
+    <div class="wrap model-grid">
+      <div class="model-text rv">
+        <h2 class="h2" id="dimensional-model-h"><span id="dimensional-model-title"></span></h2>
+        <h3 class="h3" id="grain-title"></h3>
+        <p class="grain" id="grain-note"></p>
+        <a class="text-link" id="model-open" href="dimensional-model.png" target="_blank" rel="noopener"></a>
       </div>
+      <figure class="plate model-plate rv">
+        <div class="plate-paper model-crop">
+          <img id="model-figure" src="dimensional-model.png" alt=""
+               width="4624" height="3293" loading="lazy" decoding="async">
+        </div>
+      </figure>
     </div>
-
-    <h3 class="sub-h" id="grain-title"></h3>
-    <p class="sub-note" id="grain-note"></p>
-
-    <!-- Same plate as the illustration in band 01, with the diagram modifier:
-         a schema has to stay legible, so it scrolls inside the plate rather
-         than shrinking to fit. The file is pinned to the source so it renders
-         before the module runs; app.js only supplies the localised alt. -->
-    <figure class="flow-plate flow-plate--diagram">
-      <div class="flow-plate-body">
-        <img id="model-figure" src="dimensional-model.png" alt=""
-             loading="lazy" decoding="async">
-      </div>
-    </figure>
   </section>
 
-  <!-- 10 · THE SIX BUSINESS QUESTIONS ---------------------------------- -->
+  <!-- THE SIX BUSINESS QUESTIONS ---------------------------------------- -->
   <section class="band" id="questions" aria-labelledby="questions-h">
-    <div class="band-head">
-      <span class="band-n">10</span>
-      <div>
-        <h2 id="questions-h"><span id="questions-title"></span></h2>
-        <p class="band-note" id="questions-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="questions-h"><span id="questions-title"></span></h2>
+        <p class="head-note" id="questions-note"></p>
       </div>
+
+      <div class="explorer rv" id="questions-list"></div>
+
+      <h3 class="h3 rv" id="questions-table-title"></h3>
+      <ol class="answers" id="questions-table"></ol>
     </div>
-
-    <div class="q-list" id="questions-list"></div>
-
-    <h3 class="sub-h" id="questions-table-title"></h3>
-    <div class="ci-table" id="questions-table"></div>
   </section>
 
-  <!-- 11 · DECISIONS --------------------------------------------------- -->
+  <!-- DECISIONS --------------------------------------------------------- -->
   <section class="band" id="decisions" aria-labelledby="decisions-h">
-    <div class="band-head">
-      <span class="band-n">11</span>
-      <div>
-        <h2 id="decisions-h"><span id="decisions-title"></span></h2>
-        <p class="band-note" id="decisions-note"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="decisions-h"><span id="decisions-title"></span></h2>
+        <p class="head-note" id="decisions-note"></p>
       </div>
+      <div class="thesis-pair rv">
+        <p class="thesis" id="decisions-thesis"></p>
+        <p class="principle" id="decisions-principle"></p>
+      </div>
+      <div class="adrs" id="decision-rows"></div>
     </div>
-    <p class="thesis" id="decisions-thesis"></p>
-    <p class="callout" id="decisions-principle"></p>
-    <div id="decision-rows"></div>
   </section>
 
-  <!-- 12 · REPRODUCIBILITY --------------------------------------------- -->
+  <!-- REPRODUCIBILITY --------------------------------------------------- -->
   <section class="band" id="reproducibility" aria-labelledby="repro-h">
-    <div class="band-head">
-      <span class="band-n">12</span>
-      <div>
-        <h2 id="repro-h"><span id="repro-title"></span></h2>
-        <p class="band-note" id="repro-thesis"></p>
+    <div class="wrap">
+      <div class="head rv">
+        <h2 class="h2" id="repro-h"><span id="repro-title"></span></h2>
+        <p class="head-note" id="repro-thesis"></p>
       </div>
-    </div>
-    <h3 class="sub-h" id="repro-components-title"></h3>
-    <div class="ci-table" id="repro-components"></div>
 
-    <h3 class="sub-h" id="repro-claims-title"></h3>
-    <p class="sub-note" id="repro-claims-lead"></p>
-    <ul class="guarantees" id="repro-claims"></ul>
+      <div class="repro-grid">
+        <div class="repro-col rv">
+          <h3 class="h3" id="repro-components-title"></h3>
+          <dl class="kv" id="repro-components"></dl>
+        </div>
+        <div class="repro-col rv">
+          <h3 class="h3" id="repro-claims-title"></h3>
+          <p class="sub-note" id="repro-claims-lead"></p>
+          <ul class="claims" id="repro-claims"></ul>
+        </div>
+      </div>
 
-    <div class="ci-block">
-      <h3 class="sub-h" id="repro-ci-title"></h3>
-      <div class="ci-prose" id="repro-ci"></div>
-
-      <h3 class="sub-h" id="repro-trace-title"></h3>
-      <div class="ci-prose" id="repro-trace"></div>
+      <div class="ci-panel rv">
+        <div>
+          <h3 class="h3" id="repro-ci-title"></h3>
+          <div class="prose" id="repro-ci"></div>
+        </div>
+        <div>
+          <h3 class="h3" id="repro-trace-title"></h3>
+          <div class="prose" id="repro-trace"></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- 13 · IN SUMMARY --------------------------------------------------- -->
-  <section class="band" id="summary" aria-labelledby="summary-h">
-    <div class="band-head">
-      <span class="band-n">13</span>
-      <div>
-        <h2 id="summary-h"><span id="summary-title"></span></h2>
+  <!-- IN SUMMARY -------------------------------------------------------- -->
+  <section class="band summary" id="summary" aria-labelledby="summary-h">
+    <div class="wrap summary-grid">
+      <div class="summary-lead rv">
+        <h2 class="h2" id="summary-h"><span id="summary-title"></span></h2>
+        <p class="statement" id="summary-thesis"></p>
       </div>
-    </div>
-    <div class="challenge-grid">
-      <p class="statement" id="summary-thesis"></p>
-      <div class="challenge-body">
+      <div class="summary-body rv">
         <div id="summary-body"></div>
-        <ul class="stack-line" id="summary-stack" aria-label="Technology stack"></ul>
+        <ul class="chips" id="summary-stack" aria-label="Technology stack"></ul>
         <p class="sub-note" id="summary-stack-note"></p>
       </div>
+      <p class="summary-closing rv" id="summary-closing"></p>
     </div>
-    <p class="views-explanation" id="summary-closing"></p>
   </section>
 
 </main>
 
-<footer class="site-foot">
-  <div class="site-foot-in">
+<footer class="foot">
+  <div class="wrap">
     <p class="foot-claim" id="foot-claim"></p>
     <div class="foot-grid">
       <div class="foot-col">
-        <span class="mono lbl" id="foot-project-label"></span>
-        <ul id="foot-links"></ul>
+        <p class="foot-k" id="foot-project-label"></p>
+        <ul class="foot-links" id="foot-links"></ul>
       </div>
       <div class="foot-col">
-        <span class="mono lbl" id="foot-stack-label"></span>
+        <p class="foot-k" id="foot-stack-label"></p>
         <p class="foot-stack" id="foot-stack"></p>
       </div>
-      <div class="foot-col">
-        <span class="mono lbl" id="foot-method-label"></span>
+      <div class="foot-col foot-wide">
+        <p class="foot-k" id="foot-method-label"></p>
         <p id="foot-note"></p>
       </div>
     </div>

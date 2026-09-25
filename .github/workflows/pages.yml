@@ -2,7 +2,8 @@
 # pages.yml — publishes docs/ to GitHub Pages.
 # ===========================================================================
 # No build step. docs/ is seven static files: index.html, style.css, app.js,
-# steps.js, architecture.svg, data-pipeline.webp, dimensional-model.png.
+# steps.js, architecture.svg, data-pipeline.webp, dimensional-model.png,
+# plus the self-hosted fonts in docs/fonts/ (Geist, SIL OFL).
 # What is committed is exactly what is served, which means the page cannot
 # break because a toolchain moved on.
 #

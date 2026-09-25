@@ -91,6 +91,25 @@ export const ui = {
   },
   inPipeline: { en: "In", fr: "Dans" },
 
+  /* Interface labels only: they name the role of a passage (problem, decision,
+     reason, outcome) or of a lane in the analytics step. No new claim. */
+  problem: { en: "Problem", fr: "Problème" },
+  decision: { en: "Decision", fr: "Décision" },
+  reason: { en: "Reason", fr: "Raison" },
+  outcome: { en: "Outcome", fr: "Résultat" },
+  compute: { en: "Compute", fr: "Calcul" },
+  computeNote: {
+    en: "<code>make analytics</code> runs the queries in Athena and writes the report.",
+    fr: "<code>make analytics</code> exécute les requêtes dans Athena et écrit le rapport."
+  },
+  present: { en: "Present", fr: "Présentation" },
+  presentNote: {
+    en: "<code>make analytics-view</code> serves the last report. It recomputes nothing.",
+    fr: "<code>make analytics-view</code> sert le dernier rapport. Il ne recalcule rien."
+  },
+  openFull: { en: "Open full size", fr: "Ouvrir en taille réelle" },
+  returned: { en: "Returned", fr: "Résultat" },
+
   copy: { en: "Copy", fr: "Copier" },
   copied: { en: "Copied", fr: "Copié" },
   copyFailed: { en: "Select it", fr: "Sélectionnez-le" },
