@@ -1,0 +1,162 @@
+# https://taskfile.dev
+#
+# Taskfile.yml is the developer interface of the project. It only names and
+# sequences commands; the work is done by the specialised tools:
+#
+#   Terraform        infrastructure      terraform fmt / validate, tflint
+#   Python           code and tests      ruff check, ruff format, pytest
+#   Shell            pipeline script     shellcheck
+#   AWS pipeline     data                scripts/run_pipeline.sh
+#
+# `task --list` shows every task. Tasks marked [local] need no AWS credentials;
+# tasks marked [AWS] create, use or delete resources in your account.
+#
+# Portability: the local tasks run the same on Linux, macOS and Windows.
+# The pipeline tasks run scripts/run_pipeline.sh, a Bash script that needs
+# bash, aws, terraform, jq and uv. On Windows, run them from Git Bash.
+
+version: "3"
+
+vars:
+  TF: terraform -chdir=terraform
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task: help
+
+  help:
+    desc: "List the tasks, in workflow order"
+    silent: true
+    cmds:
+      - '{{.TASK_EXE}} --list --sort none'
+      - echo ""
+      - 'echo "First AWS run: cp terraform/terraform.tfvars.example terraform/terraform.tfvars"'
+
+  # -------------------------------------------------------------------------
+  # Local checks. No AWS credentials, nothing created, nothing billed.
+  # -------------------------------------------------------------------------
+
+  check:
+    desc: "[local] Every offline check, the gate to pass before a commit"
+    cmds:
+      - task: validate
+      - task: tflint
+      - task: shellcheck
+      - task: lint
+      - task: fmt-python-check
+      - task: test
+
+  test:
+    desc: "[local] Run the offline tests (pytest -m 'not aws')"
+    cmds:
+      - uv run pytest -m "not aws" -q
+
+  lint:
+    desc: "[local] Lint the Python code (ruff check)"
+    cmds:
+      - uv run ruff check .
+
+  validate:
+    desc: "[local] Check Terraform formatting and syntax"
+    cmds:
+      - "{{.TF}} fmt -check -recursive"
+      - "{{.TF}} init -backend=false -input=false"
+      - "{{.TF}} validate"
+
+  tflint:
+    desc: "[local] Lint the Terraform code (tflint)"
+    cmds:
+      - tflint --chdir=terraform --format compact
+
+  shellcheck:
+    desc: "[local] Lint the shell scripts (shellcheck)"
+    cmds:
+      - shellcheck scripts/*.sh
+
+  fmt:
+    desc: "[local] Reformat the Terraform and Python files"
+    cmds:
+      - task: fmt-terraform
+      - task: fmt-python
+
+  fmt-terraform:
+    desc: "[local] Reformat the Terraform files (terraform fmt)"
+    cmds:
+      - "{{.TF}} fmt -recursive"
+
+  fmt-python:
+    desc: "[local] Reformat the Python files (ruff format)"
+    cmds:
+      - uv run ruff format .
+
+  fmt-python-check:
+    desc: "[local] Check the Python formatting without changing files"
+    cmds:
+      - uv run ruff format --check .
+
+  docs:
+    desc: "[local] Serve the guided walkthrough at http://localhost:8000"
+    dir: docs
+    cmds:
+      - echo "http://localhost:8000"
+      - uv run python -m http.server 8000
+
+  # -------------------------------------------------------------------------
+  # AWS, in this order. Each task delegates to Terraform, pytest or
+  # scripts/run_pipeline.sh, which holds the pipeline logic.
+  # -------------------------------------------------------------------------
+
+  deploy:
+    desc: "[AWS] Provision the infrastructure (terraform init + apply)"
+    interactive: true
+    cmds:
+      - "{{.TF}} init -input=false"
+      - "{{.TF}} apply"
+
+  pipeline:
+    desc: "[AWS] Ingest, catalog, clean, model (bronze -> silver -> gold)"
+    cmds:
+      - bash ./scripts/run_pipeline.sh all
+
+  quality:
+    desc: "[AWS] Profile the raw data (optional, read-only)"
+    cmds:
+      - bash ./scripts/run_pipeline.sh quality
+
+  analytics:
+    desc: "[AWS] Run the six business questions and generate the report"
+    silent: true
+    cmds:
+      - echo "==> Running analytics"
+      - bash ./scripts/run_pipeline.sh analytics
+      - echo ""
+      - echo "Analytics complete."
+      - 'echo "Local report: reports/report.html (open it with: task analytics-view)"'
+      - 'echo "S3 copies:    athena-results/analytics/<run>/ and athena-results/analytics/latest/"'
+
+  test-aws:
+    desc: "[AWS] Verify the deployed lake against expected numbers"
+    cmds:
+      - uv run pytest -m aws -q
+
+  destroy:
+    desc: "[AWS] Tear down every Terraform-managed AWS resource"
+    interactive: true
+    cmds:
+      - "{{.TF}} destroy"
+
+  # -------------------------------------------------------------------------
+  # Report viewer. Serves files already in reports/, calls no AWS API.
+  # -------------------------------------------------------------------------
+
+  analytics-view:
+    desc: "[local] Serve the last report at http://localhost:8001/report.html"
+    dir: reports
+    preconditions:
+      - sh: test -f report.html
+        msg: "No local report yet. Run 'task analytics' first."
+    cmds:
+      - echo "http://localhost:8001/report.html  (Ctrl+C to stop)"
+      - uv run --no-project python -m http.server 8001

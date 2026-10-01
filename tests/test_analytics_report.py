@@ -12,10 +12,7 @@ def write_athena_result(path: Path, headers: list[str], rows: list[list[str]]) -
         "ResultSet": {
             "Rows": [
                 {"Data": [{"VarCharValue": value} for value in headers]},
-                *[
-                    {"Data": [{"VarCharValue": value} for value in row]}
-                    for row in rows
-                ],
+                *[{"Data": [{"VarCharValue": value} for value in row]} for row in rows],
             ]
         }
     }

@@ -30,7 +30,7 @@ command -v jq        >/dev/null 2>&1 || die "jq not found."
 # ---------------------------------------------------------------------------
 step "Reading the deployed infrastructure"
 TF_JSON="$(terraform -chdir=terraform output -json 2>/dev/null)" \
-    || die "No Terraform outputs. Run 'make deploy' first."
+    || die "No Terraform outputs. Run 'task deploy' first."
 
 BUCKET="$(echo "$TF_JSON"   | jq -r '.bucket_name.value       // empty')"
 DATABASE="$(echo "$TF_JSON" | jq -r '.glue_database.value     // empty')"
@@ -270,8 +270,8 @@ cmd_all() {
     cmd_gold
     step "Pipeline complete"
     ok "bronze 7,956 rows -> silver 7,547 rows -> gold 7,547 facts"
-    info "Run 'make analytics' for the business questions,"
-    info "or 'pytest -m aws' to check the invariants."
+    info "Run 'task analytics' for the business questions,"
+    info "or 'task test-aws' to check the invariants."
 }
 
 # ===========================================================================

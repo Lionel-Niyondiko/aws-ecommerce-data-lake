@@ -347,7 +347,7 @@ function renderHowItRuns() {
       <span class="srow-detail">${esc(t(l.detail))}</span>
     </div>`).join(""));
 
-  set("#how-make-note", esc(t(H.principle)));
+  set("#how-principle", esc(t(H.principle)));
 
   set("#how-chains-title", esc(t(H.chainTitle)));
   set("#how-chains", H.chains.map((c, i) => `
@@ -627,7 +627,7 @@ function stepMarkup(s) {
         <p class="step-meta">
           <span>${esc(stageLabel(s.stage))}</span>
           <span>${esc(s.duration)}</span>
-          ${s.partOfPipeline ? `<span class="is-pipe">${esc(t(ui.inPipeline))} <code>make pipeline</code></span>` : ""}
+          ${s.partOfPipeline ? `<span class="is-pipe">${esc(t(ui.inPipeline))} <code>task pipeline</code></span>` : ""}
         </p>
         <h3 class="step-title">${esc(t(s.title))}</h3>
         <p class="step-obj">${esc(t(s.objective))}</p>
