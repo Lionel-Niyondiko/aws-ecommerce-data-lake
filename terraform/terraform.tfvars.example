@@ -1,4 +1,4 @@
-# Copy to terraform.tfvars (git-ignored) and edit before `make deploy`:
+# Copy to terraform.tfvars (git-ignored) and edit before `task deploy`:
 #
 #   cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 #

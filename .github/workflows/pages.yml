@@ -18,6 +18,10 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/pages.yml"
+      # The guards below read these two files, so a change to either
+      # re-checks the published page against it.
+      - "Taskfile.yml"
+      - "scripts/run_pipeline.sh"
   workflow_dispatch:
 
 permissions:
@@ -56,9 +60,10 @@ jobs:
 
           # steps.js is the only content source, so a typo in a block type or a
           # missing export would silently drop content from the published page.
-          # The guards below also re-read the Makefile and run_pipeline.sh, so
-          # the page cannot claim a command that does not exist, or claim that
-          # `make pipeline` runs a stage it does not run.
+          # The guards below also re-read Taskfile.yml and run_pipeline.sh, so
+          # the page cannot claim a task that does not exist, claim that a task
+          # delegates to a command it does not run, or claim that
+          # `task pipeline` runs a stage it does not run.
           node --input-type=module -e '
             const m = await import("/tmp/steps.mjs");
             const fs = await import("node:fs");
@@ -94,7 +99,7 @@ jobs:
             const ids = (m.steps || []).map(s => s.id);
             if (new Set(ids).size !== ids.length) fail("duplicate step id");
 
-            // What `make pipeline` really runs, read from the shell script.
+            // What `task pipeline` really runs, read from the shell script.
             const sh = fs.readFileSync("scripts/run_pipeline.sh", "utf8");
             const cmdAll = sh.slice(sh.indexOf("cmd_all()"),
                                     sh.indexOf("}", sh.indexOf("cmd_all()")));
@@ -110,9 +115,23 @@ jobs:
             if (marked.length !== 4)
               fail(`${marked.length} steps are marked partOfPipeline, expected 4`);
 
-            // Every command shown on the page must really exist.
-            const mk = fs.readFileSync("Makefile", "utf8");
-            const targets = [...mk.matchAll(/^([a-z-]+):/gm)].map(x => x[1]);
+            /* Every command shown on the page must really exist.
+               Taskfile.yml is read as text: each task is a two-space-indented
+               key under "tasks:", and its body runs until the next task. The
+               {{.TF}} variable is expanded to plain "terraform" so the body can
+               be compared with what the page draws. */
+            const tf = fs.readFileSync("Taskfile.yml", "utf8").replace(/\r\n/g, "\n");
+            const tasksSrc = tf.slice(tf.search(/^tasks:\s*$/m));
+            const tasks = {};
+            let current = null;
+            for (const l of tasksSrc.split("\n").slice(1)) {
+              const k = l.match(/^  ([a-z][a-z0-9-]*):\s*$/);
+              if (k) { current = k[1]; tasks[current] = ""; continue; }
+              if (current && !/^\s*#/.test(l))
+                tasks[current] += l.replace(/\{\{\.TF\}\}/g, "terraform") + "\n";
+            }
+            if (!Object.keys(tasks).length) fail("no task found in Taskfile.yml");
+
             const subs = [...sh.matchAll(/^\s{4}([a-z]+)\)/gm)].map(x => x[1]);
             const seen = new Set();
             const collect = (v) => {
@@ -120,17 +139,58 @@ jobs:
               if (Array.isArray(v)) return v.forEach(collect);
               if (typeof v.cmd === "string")
                 v.cmd.split("\n").forEach(l => seen.add(l.trim()));
+              if (v.type === "code" && v.lang === "bash" && typeof v.text === "string")
+                v.text.split("\n").forEach(l => seen.add(l.trim()));
               Object.values(v).forEach(collect);
             };
             collect(m.steps); collect(m.howItRuns); collect(m.quickstart);
             for (const line of seen) {
-              const t = line.match(/^make ([a-z-]+)$/);
-              if (t && !targets.includes(t[1]))
-                fail(`the page shows "${line}" but the Makefile has no such target`);
-              const sub = line.match(/^\.\/scripts\/run_pipeline\.sh ([a-z]+)/);
+              const t = line.match(/^task ([a-z][a-z0-9-]*)$/);
+              if (t && !(t[1] in tasks))
+                fail(`the page shows "${line}" but Taskfile.yml has no such task`);
+              if (/^make\b/.test(line))
+                fail(`the page still shows "${line}": the project has no Makefile, use task`);
+              const sub = line.match(/\bscripts\/run_pipeline\.sh ([a-z]+)/);
               if (sub && !subs.includes(sub[1]))
                 fail(`the page shows "${line}" but run_pipeline.sh has no such subcommand`);
             }
+
+            // Each delegation the page draws must be what the task really runs.
+            // The pipeline tasks must stay thin wrappers around the script.
+            for (const [task, sub] of [["pipeline", "all"], ["quality", "quality"],
+                                       ["analytics", "analytics"]])
+              if (!(tasks[task] || "").includes(`./scripts/run_pipeline.sh ${sub}`))
+                fail(`task ${task} no longer runs ./scripts/run_pipeline.sh ${sub}`);
+            for (const c of m.howItRuns.chains || []) {
+              const name = (c.cmd.match(/^task ([a-z][a-z0-9-]*)$/) || [])[1];
+              if (!name) { fail(`chain "${c.cmd}" is not a task command`); continue; }
+              if (c.steps[0] !== "task") fail(`chain "${c.cmd}" must start at the task layer`);
+              const next = c.steps[1];
+              if (typeof next === "string" && !(tasks[name] || "").includes(next))
+                fail(`chain "${c.cmd}" says it calls "${next}", Taskfile.yml does not`);
+            }
+
+            // Inline mentions in prose: <code>task x</code> must exist, and no
+            // operational make command may survive anywhere on the page.
+            const proseWalk = (v, path) => {
+              if (typeof v === "string") {
+                for (const x of v.matchAll(/<code>task ([a-z][a-z0-9-]*)<\/code>/g))
+                  if (!(x[1] in tasks)) fail(`${path} mentions "task ${x[1]}", which does not exist`);
+                if (/\bmake (help|fmt|validate|test|test-aws|deploy|pipeline|quality|analytics|analytics-view|destroy|docs)\b/.test(v)
+                    || /Makefile/.test(v))
+                  fail(`${path} still refers to make: "${v.slice(0, 80)}"`);
+                return;
+              }
+              if (v === null || typeof v !== "object") return;
+              if (Array.isArray(v)) return v.forEach((x, i) => proseWalk(x, `${path}[${i}]`));
+              for (const k of Object.keys(v)) proseWalk(v[k], `${path}.${k}`);
+            };
+            proseWalk(m, "steps");
+            const appText = fs.readFileSync("docs/app.js", "utf8");
+            if (/\bmake (pipeline|deploy|analytics|test|quality|destroy)\b/.test(appText))
+              fail("app.js still renders a make command");
+            for (const x of appText.matchAll(/<code>task ([a-z][a-z0-9-]*)<\/code>/g))
+              if (!(x[1] in tasks)) fail(`app.js renders "task ${x[1]}", which does not exist`);
 
             /* Bilingual completeness. A localisable value is either a plain
                string (language-neutral by design: commands, SQL, AWS service
@@ -192,8 +252,9 @@ jobs:
             if (bad) process.exit(1);
             const blocks = m.steps.reduce((n, s) => n + (s.blocks || []).length, 0);
             console.log(`OK - ${m.steps.length} steps, ${blocks} depth blocks, ` +
-                        `${marked.length} in make pipeline, ${localised} localised strings ` +
-                        `complete in ${LANGS.join("/")}, all commands verified.`);
+                        `${marked.length} in task pipeline, ${localised} localised strings ` +
+                        `complete in ${LANGS.join("/")}, ${Object.keys(tasks).length} tasks, ` +
+                        `all commands verified.`);
           '
 
       - uses: actions/configure-pages@v5

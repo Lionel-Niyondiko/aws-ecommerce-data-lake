@@ -17,14 +17,15 @@
    the same order, the same number of items.
 
    NEVER TRANSLATED
-   Commands, SQL, Terraform, AWS service names, Make targets, file and
+   Commands, SQL, Terraform, AWS service names, task names, file and
    directory names, table and column names, identifiers, URLs, code.
 
    FACTS
    Every command, count and table name below was read out of the repository.
-   The Pages workflow re-reads the Makefile and run_pipeline.sh at build time
-   and fails if this file claims a command that does not exist, or claims that
-   `make pipeline` runs a stage it does not run.
+   The Pages workflow re-reads Taskfile.yml and run_pipeline.sh at build time
+   and fails if this file claims a task that does not exist, draws a task as
+   calling something it does not call, or claims that `task pipeline` runs a
+   stage it does not run.
 
    HOUSE STYLE
    No em dashes. Short sentences. No marketing vocabulary.
@@ -99,13 +100,13 @@ export const ui = {
   outcome: { en: "Outcome", fr: "Résultat" },
   compute: { en: "Compute", fr: "Calcul" },
   computeNote: {
-    en: "<code>make analytics</code> runs the queries in Athena and writes the report.",
-    fr: "<code>make analytics</code> exécute les requêtes dans Athena et écrit le rapport."
+    en: "<code>task analytics</code> runs the queries in Athena and writes the report.",
+    fr: "<code>task analytics</code> exécute les requêtes dans Athena et écrit le rapport."
   },
   present: { en: "Present", fr: "Présentation" },
   presentNote: {
-    en: "<code>make analytics-view</code> serves the last report. It recomputes nothing.",
-    fr: "<code>make analytics-view</code> sert le dernier rapport. Il ne recalcule rien."
+    en: "<code>task analytics-view</code> serves the last report. It recomputes nothing.",
+    fr: "<code>task analytics-view</code> sert le dernier rapport. Il ne recalcule rien."
   },
   openFull: { en: "Open full size", fr: "Ouvrir en taille réelle" },
   returned: { en: "Returned", fr: "Résultat" },
@@ -147,8 +148,8 @@ export const ui = {
 
   plate: { en: "Plate 01 · Target architecture", fr: "Planche 01 · Architecture cible" },
   diagramFallback: {
-    en: "Diagram shown as an image. Inline rendering needs the page to be served over http (make docs).",
-    fr: "Diagramme affiché comme image. Le rendu en ligne nécessite une page servie en http (make docs)."
+    en: "Diagram shown as an image. Inline rendering needs the page to be served over http (task docs).",
+    fr: "Diagramme affiché comme image. Le rendu en ligne nécessite une page servie en http (task docs)."
   },
   diagramAlt: {
     en: "Target architecture: three source files land in the bronze prefix of one S3 bucket, are transformed by Athena CTAS into silver then gold, and answer six business questions.",
@@ -241,7 +242,7 @@ export const meta = {
     [{ en: "Catalog", fr: "Catalogue" }, "AWS Glue Data Catalog"],
     [{ en: "Engine", fr: "Moteur" }, "Amazon Athena"],
     [{ en: "Provisioning", fr: "Provisionnement" }, "Terraform"],
-    [{ en: "Interface", fr: "Interface" }, { en: "Makefile, one target per step", fr: "Makefile, une cible par étape" }],
+    [{ en: "Interface", fr: "Interface" }, { en: "Taskfile, one task per step", fr: "Taskfile, une tâche par étape" }],
     [{ en: "Orchestration", fr: "Orchestration" }, "run_pipeline.sh"],
     [{ en: "Tests", fr: "Tests" }, { en: "29 offline + 17 on AWS", fr: "29 hors ligne + 17 sur AWS" }],
     ["CI", { en: "GitHub Actions, offline checks",
@@ -332,9 +333,9 @@ export const views = {
       fr: "Comment l’environnement est-il construit, vérifié et supprimé ?"
     },
     stages: [
-      { name: { en: "Provision", fr: "Provisionner" }, detail: "make deploy" },
-      { name: { en: "Test", fr: "Tester" }, detail: "make test-aws" },
-      { name: { en: "Destroy", fr: "Détruire" }, detail: "make destroy" }
+      { name: { en: "Provision", fr: "Provisionner" }, detail: "task deploy" },
+      { name: { en: "Test", fr: "Tester" }, detail: "task test-aws" },
+      { name: { en: "Destroy", fr: "Détruire" }, detail: "task destroy" }
     ]
   },
   explanation: {
@@ -388,16 +389,16 @@ export const numbers = {
 export const howItRuns = {
   title: { en: "How the project runs", fr: "Comment le projet s’exécute" },
   note: {
-    en: "Every command goes through the Makefile. It is not an orchestrator and I do not use it as one: no scheduler, no automatic retry, no dependency graph. The pipeline is short and linear, and it needs none of that.",
-    fr: "Toutes les commandes passent par le Makefile. Ce n’est pas un orchestrateur et je ne l’utilise pas comme tel : pas de scheduler, pas de retry automatique, pas de graphe de dépendances. Le pipeline est court et linéaire, il n’en a pas besoin."
+    en: "Every command starts from Taskfile. It names the commands and hands each one to the tool that owns it: Terraform for the infrastructure, run_pipeline.sh for the AWS pipeline, Ruff and pytest for the Python code, ShellCheck for the shell script. It is not an orchestrator and I do not use it as one: no scheduler, no automatic retry, no dependency graph. The pipeline is short and linear, and it needs none of that.",
+    fr: "Toutes les commandes partent du Taskfile. Il nomme les commandes et confie chacune à l’outil qui en est responsable : Terraform pour l’infrastructure, run_pipeline.sh pour le pipeline AWS, Ruff et pytest pour le code Python, ShellCheck pour le script shell. Ce n’est pas un orchestrateur et je ne l’utilise pas comme tel : pas de scheduler, pas de retry automatique, pas de graphe de dépendances. Le pipeline est court et linéaire, il n’en a pas besoin."
   },
   layers: [
-    { name: "Makefile",
-      role: { en: "Command interface", fr: "Interface de commande" },
-      detail: { en: "The command interface of the project.", fr: "Interface de commande du projet." } },
+    { name: "Taskfile.yml",
+      role: { en: "Developer interface", fr: "Interface développeur" },
+      detail: { en: "Names each command and delegates it. Holds no pipeline logic.", fr: "Nomme chaque commande et la délègue. Ne contient aucune logique de pipeline." } },
     { name: "run_pipeline.sh",
       role: { en: "Orchestration", fr: "Orchestration" },
-      detail: { en: "Local orchestration of the pipeline steps.", fr: "Orchestration locale des étapes du pipeline." } },
+      detail: { en: "Runs the AWS pipeline steps in order, in Bash.", fr: "Enchaîne les étapes du pipeline AWS, en Bash." } },
     { name: "Terraform",
       role: { en: "Infrastructure", fr: "Infrastructure" },
       detail: { en: "Provisioning of the AWS infrastructure.", fr: "Provisionnement de l’infrastructure AWS." } },
@@ -409,7 +410,13 @@ export const howItRuns = {
       detail: { en: "Serverless SQL engine.", fr: "Moteur SQL serverless." } },
     { name: "pytest",
       role: { en: "Verification", fr: "Vérification" },
-      detail: { en: "Automated verification of the expected behaviour.", fr: "Vérification automatisée du comportement attendu." } }
+      detail: { en: "Automated verification of the expected behaviour.", fr: "Vérification automatisée du comportement attendu." } },
+    { name: "Ruff",
+      role: { en: "Python quality", fr: "Qualité Python" },
+      detail: { en: "Lint and formatting of the Python code. Checks the code, not its behaviour.", fr: "Lint et formatage du code Python. Vérifie le code, pas son comportement." } },
+    { name: "ShellCheck",
+      role: { en: "Shell quality", fr: "Qualité shell" },
+      detail: { en: "Static analysis of run_pipeline.sh.", fr: "Analyse statique de run_pipeline.sh." } }
   ],
   principle: {
     en: "One command, one job. When you run it, you know what it touches.",
@@ -426,12 +433,12 @@ export const howItRuns = {
     fr: "Ce qu’une commande déclenche réellement"
   },
   chains: [
-    { cmd: "make deploy",   steps: ["make", "terraform init", "terraform apply",
+    { cmd: "task deploy",   steps: ["task", "terraform init", "terraform apply",
                                     { en: "AWS resources", fr: "ressources AWS" }] },
-    { cmd: "make pipeline", steps: ["make", "run_pipeline.sh all", "ingest", "catalog", "silver", "gold"] },
-    { cmd: "make quality",  steps: ["make", "run_pipeline.sh quality", "sql/02_quality.sql",
+    { cmd: "task pipeline", steps: ["task", "run_pipeline.sh all", "ingest", "catalog", "silver", "gold"] },
+    { cmd: "task quality",  steps: ["task", "run_pipeline.sh quality", "sql/02_quality.sql",
                                     { en: "read-only", fr: "lecture seule" }] },
-    { cmd: "make test-aws", steps: ["make", "pytest -m aws",
+    { cmd: "task test-aws", steps: ["task", "pytest -m aws",
                                     { en: "Athena queries", fr: "requêtes Athena" },
                                     { en: "17 tests", fr: "17 tests" }] }
   ],
@@ -447,11 +454,11 @@ export const howItRuns = {
       name: { en: "Main workflow", fr: "Workflow principal" },
       note: { en: "Run these in order, from a clean clone.", fr: "À lancer dans cet ordre, depuis un clone propre." },
       items: [
-        { cmd: "make deploy",    what: { en: "Create the infrastructure", fr: "Créer l’infrastructure" } },
-        { cmd: "make pipeline",  what: { en: "ingest, catalog, silver, gold", fr: "ingest, catalog, silver, gold" } },
-        { cmd: "make analytics", what: { en: "Answer the six business questions, generate the report", fr: "Répondre aux six questions métier, générer le rapport" } },
-        { cmd: "make test-aws",  what: { en: "Verify the deployed lake", fr: "Vérifier le lac déployé" } },
-        { cmd: "make destroy",   what: { en: "Remove everything", fr: "Tout supprimer" } }
+        { cmd: "task deploy",    what: { en: "Create the infrastructure", fr: "Créer l’infrastructure" } },
+        { cmd: "task pipeline",  what: { en: "ingest, catalog, silver, gold", fr: "ingest, catalog, silver, gold" } },
+        { cmd: "task analytics", what: { en: "Answer the six business questions, generate the report", fr: "Répondre aux six questions métier, générer le rapport" } },
+        { cmd: "task test-aws",  what: { en: "Verify the deployed lake", fr: "Vérifier le lac déployé" } },
+        { cmd: "task destroy",   what: { en: "Remove everything", fr: "Tout supprimer" } }
       ]
     },
     {
@@ -459,10 +466,12 @@ export const howItRuns = {
       name: { en: "Inspection and validation", fr: "Inspection et validation" },
       note: { en: "Optional. None of these is part of the main pipeline.", fr: "Facultatives. Aucune ne fait partie du pipeline principal." },
       items: [
-        { cmd: "make quality",  what: { en: "Profile the raw data", fr: "Profiler les données brutes" } },
-        { cmd: "make test",     what: { en: "29 tests, no AWS access", fr: "29 tests, sans accès AWS" } },
-        { cmd: "make validate", what: { en: "Terraform format and syntax", fr: "Format et syntaxe Terraform" } },
-        { cmd: "make fmt",      what: { en: "Reformat the Terraform files", fr: "Reformater les fichiers Terraform" } }
+        { cmd: "task quality",  what: { en: "Profile the raw data", fr: "Profiler les données brutes" } },
+        { cmd: "task check",    what: { en: "Every offline check, before a commit", fr: "Tous les contrôles hors ligne, avant un commit" } },
+        { cmd: "task test",     what: { en: "29 tests, no AWS access", fr: "29 tests, sans accès AWS" } },
+        { cmd: "task lint",     what: { en: "Python lint, Ruff", fr: "Lint Python, Ruff" } },
+        { cmd: "task validate", what: { en: "Terraform format and syntax", fr: "Format et syntaxe Terraform" } },
+        { cmd: "task fmt",      what: { en: "Reformat the Terraform and Python files", fr: "Reformater les fichiers Terraform et Python" } }
       ]
     },
     {
@@ -471,8 +480,8 @@ export const howItRuns = {
       note: { en: "Local viewers. Neither recomputes anything or calls AWS.",
               fr: "Consultation locale. Aucune ne recalcule rien ni n’appelle AWS." },
       items: [
-        { cmd: "make docs", what: { en: "This page, http://localhost:8000", fr: "Cette page, http://localhost:8000" } },
-        { cmd: "make analytics-view", what: { en: "Last analytics report, http://localhost:8001/report.html",
+        { cmd: "task docs", what: { en: "This page, http://localhost:8000", fr: "Cette page, http://localhost:8000" } },
+        { cmd: "task analytics-view", what: { en: "Last analytics report, http://localhost:8001/report.html",
                                               fr: "Dernier rapport analytique, http://localhost:8001/report.html" } }
       ]
     }
@@ -480,8 +489,8 @@ export const howItRuns = {
 
   warning: {
     title: { en: "An important distinction", fr: "Une distinction importante" },
-    lead: { en: "<code>make pipeline</code> does not run everything. It runs only:",
-            fr: "<code>make pipeline</code> n’exécute pas tout. Il lance uniquement :" },
+    lead: { en: "<code>task pipeline</code> does not run everything. It runs only:",
+            fr: "<code>task pipeline</code> n’exécute pas tout. Il lance uniquement :" },
     runs: "ingest\ncatalog\nsilver\ngold",
     notLead: { en: "It does not run:", fr: "Il n’exécute pas :" },
     notRuns: "quality\nanalytics\ntest",
@@ -605,8 +614,8 @@ export const architecture = {
     { key: "results", path: "athena-results/",
       title: { en: "Athena results", fr: "Résultats Athena" },
       volume: { en: "query output + reports", fr: "sorties de requêtes + rapports" },
-      text: { en: "<code>queries/</code> holds the result files Athena writes for every query. <code>analytics/</code> holds the business report generated by <code>make analytics</code>: one folder per run, plus <code>latest/</code>.",
-              fr: "<code>queries/</code> contient les fichiers de résultats écrits par Athena pour chaque requête. <code>analytics/</code> contient le rapport métier généré par <code>make analytics</code> : un dossier par exécution, plus <code>latest/</code>." } }
+      text: { en: "<code>queries/</code> holds the result files Athena writes for every query. <code>analytics/</code> holds the business report generated by <code>task analytics</code>: one folder per run, plus <code>latest/</code>.",
+              fr: "<code>queries/</code> contient les fichiers de résultats écrits par Athena pour chaque requête. <code>analytics/</code> contient le rapport métier généré par <code>task analytics</code> : un dossier par exécution, plus <code>latest/</code>." } }
   ],
   closing: {
     en: "I kept the architecture small on purpose. Terraform owns the infrastructure, S3 stores, Glue describes, Athena computes, pytest checks, and GitHub Actions runs the checks on every push. It is sized for this project, not for everything it could grow into. If the constraints change, every choice is written down and easy to revisit.",
@@ -701,11 +710,11 @@ export const quickstart = {
 
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
-make deploy
-make pipeline
-make analytics
-make test-aws
-make destroy`
+task deploy
+task pipeline
+task analytics
+task test-aws
+task destroy`
 };
 
 export const steps = [
@@ -727,32 +736,35 @@ export const steps = [
       fr: "Quand quelque chose échoue, c’est soit le poste, soit le projet. J’élimine d’abord le poste. Les contrôles hors ligne couvrent une bonne partie du projet, sans compte AWS et sans coût."
     },
     run: {
-      cmd: "uv sync\nmake test\nmake validate",
+      cmd: "uv sync\ntask lint\ntask test\ntask validate",
       note: {
-        en: "Create the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>, then run the zero-cost local checks.",
-        fr: "Créer l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>, puis exécuter les contrôles locaux sans coût AWS."
+        en: "Create the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>, then run the zero-cost local checks. <code>task check</code> runs all of them in one go, plus tflint, ShellCheck and the Python format check.",
+        fr: "Créer l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>, puis exécuter les contrôles locaux sans coût AWS. <code>task check</code> les lance tous d’un coup, avec en plus tflint, ShellCheck et le contrôle de formatage Python."
       }
     },
     flow: [
       "uv sync",
-      "make test",
+      "task lint",
+      "ruff check",
+      "task test",
       { en: "29 offline tests", fr: "29 tests hors ligne" },
-      "make validate",
+      "task validate",
       "terraform fmt -check",
       "terraform init -backend=false",
       "terraform validate"
     ],
     whatHappens: {
-      en: "<code>uv sync</code> creates the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>. It applies the project’s Python 3.13 requirement and installs the locked test dependencies. <code>make test</code> then runs the 29 offline tests: they read the source files, the SQL and the repository configuration, and run the report generator on sample Athena results. They do not contact AWS. <code>make validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials.",
-      fr: "<code>uv sync</code> crée l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>. Il applique la contrainte Python 3.13 du projet et installe les dépendances de test verrouillées. <code>make test</code> exécute ensuite les 29 tests hors ligne : ils lisent les fichiers sources, le SQL et la configuration du dépôt, et font tourner le générateur de rapport sur des résultats Athena d’exemple. Ils ne contactent pas AWS. <code>make validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS."
+      en: "<code>uv sync</code> creates the project environment from <code>pyproject.toml</code> and <code>uv.lock</code>. It applies the project’s Python 3.13 requirement and installs the locked development tools, pytest and Ruff. <code>task lint</code> runs Ruff on the Python code: unused variables, undefined names, import order, likely bugs. It reads the code and runs none of it. <code>task test</code> then runs the 29 offline tests: they read the source files, the SQL and the repository configuration, and run the report generator on sample Athena results. They do not contact AWS. <code>task validate</code> checks Terraform formatting and syntax. The <code>-backend=false</code> option initialises Terraform without using the remote backend, so this check can be run without AWS credentials.",
+      fr: "<code>uv sync</code> crée l’environnement du projet à partir de <code>pyproject.toml</code> et <code>uv.lock</code>. Il applique la contrainte Python 3.13 du projet et installe les outils de développement verrouillés, pytest et Ruff. <code>task lint</code> passe Ruff sur le code Python : variables inutilisées, noms non définis, ordre des imports, bugs probables. Il lit le code sans en exécuter une ligne. <code>task test</code> exécute ensuite les 29 tests hors ligne : ils lisent les fichiers sources, le SQL et la configuration du dépôt, et font tourner le générateur de rapport sur des résultats Athena d’exemple. Ils ne contactent pas AWS. <code>task validate</code> vérifie le formatage et la syntaxe Terraform. L’option <code>-backend=false</code> permet d’initialiser Terraform sans utiliser le backend distant : cette vérification peut donc être réalisée sans identifiants AWS."
     },
     check: {
       caption: { en: "Before going further", fr: "Avant d’aller plus loin" },
       rows: [
-        [{ en: "Required tools", fr: "Outils nécessaires" }, "git, make, terraform, uv, jq"],
+        [{ en: "Required tools", fr: "Outils nécessaires" }, "git, task, terraform, uv, jq, bash"],
         ["uv run python --version", "Python 3.13.x"],
         ["uv run pytest --version", "pytest 9.1.1"],
-        ["make test", "29 passed, 17 deselected"],
+        ["task lint", "All checks passed!"],
+        ["task test", "29 passed, 17 deselected"],
         [{ en: "AWS resources created", fr: "Ressources AWS créées" }, { en: "none at this stage", fr: "aucune à ce stade" }],
         [{ en: "Expected cost", fr: "Coût attendu" }, "$0.00"]
       ]
@@ -766,6 +778,13 @@ export const steps = [
       fr: "Ce qui peut se vérifier en local se vérifie avant de déployer."
     },
     blocks: [
+      {
+        type: "note",
+        text: {
+          en: "Each tool checks one thing. Ruff checks the quality and the formatting of the Python code. pytest checks its behaviour. Terraform checks the infrastructure code, and tflint its conventions. ShellCheck checks the shell script. Taskfile only runs them; none of them replaces another.",
+          fr: "Chaque outil vérifie une seule chose. Ruff vérifie la qualité et le formatage du code Python. pytest vérifie son comportement. Terraform vérifie le code d’infrastructure, et tflint ses conventions. ShellCheck vérifie le script shell. Le Taskfile se contente de les lancer ; aucun ne remplace l’autre."
+        }
+      },
       {
         type: "pitfall",
         title: { en: "Set the alert email first", fr: "Renseigner l’e-mail d’alerte d’abord" },
@@ -794,13 +813,13 @@ export const steps = [
       fr: "Tout est dans le code Terraform. Je ne crée rien à la main dans la console AWS : l’environnement peut être relu et reconstruit."
     },
     run: {
-      cmd: "aws sts get-caller-identity\ncp terraform/terraform.tfvars.example terraform/terraform.tfvars\nmake deploy",
+      cmd: "aws sts get-caller-identity\ncp terraform/terraform.tfvars.example terraform/terraform.tfvars\ntask deploy",
       note: {
         en: "Confirm which AWS account is about to be billed, then copy the example file and fill in the required variables. Neither is needed for the local checks.",
         fr: "Confirmer quel compte AWS va être facturé, puis copier le fichier d’exemple et renseigner les variables nécessaires. Aucun des deux n’est nécessaire aux contrôles locaux."
       }
     },
-    flow: ["make deploy", "terraform init", "terraform apply"],
+    flow: ["task deploy", "terraform init", "terraform apply"],
     whatHappens: {
       en: "Terraform creates the S3 bucket, the Glue Data Catalog, the IAM resources, the budgets, the SNS notifications and CloudWatch. <code>apply</code> is interactive: it prints the plan and waits for confirmation.",
       fr: "Terraform crée le bucket S3, le Glue Data Catalog, les ressources IAM, les budgets, les notifications SNS et CloudWatch. <code>apply</code> est interactif : il affiche le plan et attend une confirmation."
@@ -868,8 +887,8 @@ resource "aws_s3_object" "zones" {
       {
         type: "note",
         text: {
-          en: "Terraform also creates a least-privilege pipeline role that trusts the identity running <code>terraform apply</code>. How it is used depends on that identity. As an IAM user, <code>run_pipeline.sh</code> assumes the role for one hour, so every pipeline step runs with least privilege. If you already work through an assumed role (AWS SSO, <code>assume-role</code>, CI OIDC), the script does not chain roles: it runs with your current role, which then needs S3, Glue and Athena access to the project resources. <code>make test-aws</code> always runs with your current identity.",
-          fr: "Terraform crée aussi un rôle de pipeline au moindre privilège, qui fait confiance à l’identité qui lance <code>terraform apply</code>. Son usage dépend de cette identité. Avec un utilisateur IAM, <code>run_pipeline.sh</code> assume le rôle pour une heure : chaque étape du pipeline s’exécute alors au moindre privilège. Si vous travaillez déjà via un rôle assumé (AWS SSO, <code>assume-role</code>, OIDC en CI), le script n’enchaîne pas les rôles : il s’exécute avec votre rôle courant, qui doit alors disposer des accès S3, Glue et Athena aux ressources du projet. <code>make test-aws</code> s’exécute toujours avec votre identité courante."
+          en: "Terraform also creates a least-privilege pipeline role that trusts the identity running <code>terraform apply</code>. How it is used depends on that identity. As an IAM user, <code>run_pipeline.sh</code> assumes the role for one hour, so every pipeline step runs with least privilege. If you already work through an assumed role (AWS SSO, <code>assume-role</code>, CI OIDC), the script does not chain roles: it runs with your current role, which then needs S3, Glue and Athena access to the project resources. <code>task test-aws</code> always runs with your current identity.",
+          fr: "Terraform crée aussi un rôle de pipeline au moindre privilège, qui fait confiance à l’identité qui lance <code>terraform apply</code>. Son usage dépend de cette identité. Avec un utilisateur IAM, <code>run_pipeline.sh</code> assume le rôle pour une heure : chaque étape du pipeline s’exécute alors au moindre privilège. Si vous travaillez déjà via un rôle assumé (AWS SSO, <code>assume-role</code>, OIDC en CI), le script n’enchaîne pas les rôles : il s’exécute avec votre rôle courant, qui doit alors disposer des accès S3, Glue et Athena aux ressources du projet. <code>task test-aws</code> s’exécute toujours avec votre identité courante."
         }
       }
     ]
@@ -1023,13 +1042,13 @@ MSCK REPAIR TABLE orders_raw;`
       fr: "Une règle de nettoyage que je ne peux pas justifier par un chiffre, je ne pourrai pas la défendre le jour où l’on me demandera où est passé le chiffre d’affaires manquant. Mesurer d’abord fait aussi de Silver une prédiction qu’on peut prendre en défaut."
     },
     run: {
-      cmd: "make quality",
+      cmd: "task quality",
       note: {
-        en: "Not part of make pipeline, and read-only: it writes nothing and drops nothing. Profiling looks at the data before the rules; the analytics queries answer the business questions once the model exists. I keep the two apart.",
-        fr: "Ne fait pas partie de make pipeline, et en lecture seule : rien n’est écrit, rien n’est supprimé. Le profilage regarde la donnée avant les règles ; les requêtes analytiques répondent aux questions métier une fois le modèle construit. Je garde les deux séparés."
+        en: "Not part of task pipeline, and read-only: it writes nothing and drops nothing. Profiling looks at the data before the rules; the analytics queries answer the business questions once the model exists. I keep the two apart.",
+        fr: "Ne fait pas partie de task pipeline, et en lecture seule : rien n’est écrit, rien n’est supprimé. Le profilage regarde la donnée avant les règles ; les requêtes analytiques répondent aux questions métier une fois le modèle construit. Je garde les deux séparés."
       }
     },
-    flow: ["make quality", "run_pipeline.sh quality", "sql/02_quality.sql", "15 read-only queries"],
+    flow: ["task quality", "run_pipeline.sh quality", "sql/02_quality.sql", "15 read-only queries"],
     whatHappens: {
       en: "Fifteen profiling queries read the bronze tables and count the defects by class. Nothing is written to S3, no table is created, and no row is removed. The output is a report I read before deciding anything.",
       fr: "Quinze requêtes de profilage lisent les tables bronze et comptent les défauts par classe. Rien n’est écrit sur S3, aucune table n’est créée, aucune ligne n’est retirée. Le résultat est un rapport que je lis avant de décider quoi que ce soit."
@@ -1306,13 +1325,13 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       fr: "Un modèle en étoile n’est pas le livrable. Les réponses le sont. C’est aussi à cette étape que les décisions de modélisation portent leurs fruits, car chaque requête tient sur un écran."
     },
     run: {
-      cmd: "make analytics",
+      cmd: "task analytics",
       note: {
-        en: "Separate from make pipeline. The model can be rebuilt without re-running the analysis, and the analysis re-run without rebuilding the model.",
-        fr: "Distinct de make pipeline. Le modèle peut être reconstruit sans relancer l’analyse, et l’analyse relancée sans reconstruire le modèle."
+        en: "Separate from task pipeline. The model can be rebuilt without re-running the analysis, and the analysis re-run without rebuilding the model.",
+        fr: "Distinct de task pipeline. Le modèle peut être reconstruit sans relancer l’analyse, et l’analyse relancée sans reconstruire le modèle."
       }
     },
-    flow: ["make analytics", "run_pipeline.sh analytics", "sql/05_analytics.sql",
+    flow: ["task analytics", "run_pipeline.sh analytics", "sql/05_analytics.sql",
            "generate_analytics_report.py", "HTML · Markdown · JSON · CSV"],
     whatHappens: {
       en: "The 12 statements of <code>sql/05_analytics.sql</code>, grouped under the six business questions, run against the Gold tables. Athena writes its native result files to <code>athena-results/queries/</code>, and the script saves each result as JSON. <code>scripts/generate_analytics_report.py</code> then turns them into one report in four formats: HTML to read, Markdown to share, JSON for programmatic use, CSV for a spreadsheet. The report is uploaded to <code>athena-results/analytics/&lt;run&gt;/</code> and <code>athena-results/analytics/latest/</code>, and copied to <code>reports/</code> on your machine.",
@@ -1342,8 +1361,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
         type: "code",
         caption: "reports/",
         lang: "text",
-        does: { en: "What one run of make analytics leaves on your machine.",
-                fr: "Ce qu’une exécution de make analytics laisse sur votre poste." },
+        does: { en: "What one run of task analytics leaves on your machine.",
+                fr: "Ce qu’une exécution de task analytics laisse sur votre poste." },
         matters: {
           en: "Each run keeps its own folder with the raw Athena results, so a figure in the report can be traced back to the query that produced it. The same files are archived in S3.",
           fr: "Chaque exécution conserve son propre dossier avec les résultats Athena bruts : un chiffre du rapport peut donc être rattaché à la requête qui l’a produit. Les mêmes fichiers sont archivés dans S3."
@@ -1357,19 +1376,19 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       },
       {
         type: "code",
-        caption: "Makefile",
+        caption: "Taskfile.yml",
         lang: "bash",
         does: { en: "Opens the last local report in the browser.",
                 fr: "Ouvre le dernier rapport local dans le navigateur." },
         matters: {
-          en: "<code>make analytics-view</code> recomputes nothing and calls neither Athena nor any other AWS service. It only serves the <code>reports/</code> folder, which is convenient for a demonstration. To refresh the figures, run <code>make analytics</code> again.",
-          fr: "<code>make analytics-view</code> ne recalcule rien et n’appelle ni Athena ni aucun autre service AWS. Il sert uniquement le dossier <code>reports/</code>, ce qui est pratique pour une démonstration. Pour actualiser les chiffres, relancez <code>make analytics</code>."
+          en: "<code>task analytics-view</code> recomputes nothing and calls neither Athena nor any other AWS service. It only serves the <code>reports/</code> folder, which is convenient for a demonstration. To refresh the figures, run <code>task analytics</code> again.",
+          fr: "<code>task analytics-view</code> ne recalcule rien et n’appelle ni Athena ni aucun autre service AWS. Il sert uniquement le dossier <code>reports/</code>, ce qui est pratique pour une démonstration. Pour actualiser les chiffres, relancez <code>task analytics</code>."
         },
         expect: {
           en: "http://localhost:8001/report.html, in French like the SQL model. Stop with Ctrl+C.",
           fr: "http://localhost:8001/report.html, en français comme le modèle SQL. Arrêt avec Ctrl+C."
         },
-        text: "make analytics-view"
+        text: "task analytics-view"
       },
       {
         type: "pitfall",
@@ -1418,11 +1437,11 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       en: "The logic gets checked in seconds on every push. The AWS integration gets checked when a lake is actually running.",
       fr: "La logique se vérifie en quelques secondes à chaque push. L’intégration AWS se vérifie quand un lac tourne réellement."
     },
-    run: { cmd: "make test\nmake test-aws" },
-    flow: ["make test", { en: "29 offline tests", fr: "29 tests hors ligne" }, "make test-aws", { en: "17 tests on the deployed lake", fr: "17 tests sur le lac déployé" }],
+    run: { cmd: "task test\ntask test-aws" },
+    flow: ["task test", { en: "29 offline tests", fr: "29 tests hors ligne" }, "task test-aws", { en: "17 tests on the deployed lake", fr: "17 tests sur le lac déployé" }],
     whatHappens: {
-      en: "<code>make test</code> runs 29 tests that read the source files, the SQL text and the repository configuration, and check the report generator. <code>make test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
-      fr: "<code>make test</code> exécute 29 tests qui lisent les fichiers sources, le texte SQL et la configuration du dépôt, et vérifient le générateur de rapport. <code>make test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
+      en: "<code>task test</code> runs 29 tests that read the source files, the SQL text and the repository configuration, and check the report generator. <code>task test-aws</code> reads the bucket name and database from the Terraform outputs, submits queries to Athena and compares the results to expected values written in the test file. The numbers are hard-coded on purpose: a test that recomputes the expected value with the same logic as the code under test proves nothing.",
+      fr: "<code>task test</code> exécute 29 tests qui lisent les fichiers sources, le texte SQL et la configuration du dépôt, et vérifient le générateur de rapport. <code>task test-aws</code> lit le nom du bucket et la base dans les sorties Terraform, soumet des requêtes à Athena et compare les résultats aux valeurs attendues écrites dans le fichier de test. Les chiffres sont en dur volontairement : un test qui recalcule la valeur attendue avec la même logique que le code testé ne prouve rien."
     },
     check: {
       caption: { en: "What the suite covers", fr: "Ce que couvre la suite" },
@@ -1491,8 +1510,8 @@ LEFT JOIN dim_client  c ON c.customer_id = o.customer_id;`
       en: "Tearing down is part of the normal run. The project is meant to be rebuilt from scratch.",
       fr: "La destruction fait partie de l’exécution normale. Le projet est fait pour être reconstruit de zéro."
     },
-    run: { cmd: "make destroy" },
-    flow: ["make destroy", "terraform destroy", "0 resources in state"],
+    run: { cmd: "task destroy" },
+    flow: ["task destroy", "terraform destroy", "0 resources in state"],
     whatHappens: {
       en: "Everything goes: the bucket and its contents, the Glue database and its tables, the IAM resources, the budget, the alarm, the SNS topic. Running the whole walkthrough again reproduces the same 7,547 facts and the same $9,284,872.42.",
       fr: "Tout disparaît : le bucket et son contenu, la base Glue et ses tables, les ressources IAM, le budget, l’alarme, le topic SNS. Réexécuter tout le parcours reproduit les mêmes 7 547 faits et les mêmes 9 284 872,42 $."
@@ -1748,7 +1767,7 @@ export const decisions = {
         en: "If the pipeline had to run on a schedule, retry after a failure, handle several dependencies or be monitored in production, the answer would be different.",
         fr: "S’il fallait planifier le pipeline, le relancer automatiquement après un échec, gérer plusieurs dépendances ou le superviser en production, la réponse serait différente."
       },
-      instead: { en: "run_pipeline.sh, called by the Makefile", fr: "run_pipeline.sh, appelé par le Makefile" }
+      instead: { en: "run_pipeline.sh, called by Taskfile", fr: "run_pipeline.sh, appelé par le Taskfile" }
     },
     {
       tool: "dbt",
@@ -1798,7 +1817,7 @@ export const reproducibility = {
     [{ en: "Tests", fr: "Tests" }, { en: "29 offline tests + 17 AWS tests", fr: "29 tests hors ligne + 17 tests AWS" }],
     ["CI", { en: "GitHub Actions, offline only", fr: "GitHub Actions, hors ligne uniquement" }],
     [{ en: "AWS validation", fr: "Validation AWS" },
-     { en: "manual, make test-aws", fr: "manuelle, make test-aws" }],
+     { en: "manual, task test-aws", fr: "manuelle, task test-aws" }],
     [{ en: "Teardown", fr: "Destruction" }, "terraform destroy"]
   ],
   claimsTitle: { en: "What I check, and with what", fr: "Ce que je vérifie, et avec quoi" },
@@ -1810,15 +1829,16 @@ export const reproducibility = {
     [{ en: "the infrastructure can be recreated", fr: "l’infrastructure peut être recréée" }, "terraform apply"],
     [{ en: "the SQL transformations run in the intended order", fr: "les transformations SQL s’exécutent dans l’ordre prévu" }, "run_pipeline.sh"],
     [{ en: "the expected results are verifiable", fr: "les résultats attendus sont vérifiables" }, "pytest"],
-    [{ en: "the offline tests can run without an AWS account", fr: "les tests hors ligne peuvent tourner sans compte AWS" }, "make test"],
-    [{ en: "the AWS tests can validate the deployed environment, by hand", fr: "les tests AWS peuvent valider l’environnement réellement déployé, à la main" }, "make test-aws"],
-    [{ en: "the resources can be removed cleanly", fr: "les ressources peuvent être supprimées proprement" }, "make destroy"]
+    [{ en: "the Python code meets its lint and format rules", fr: "le code Python respecte ses règles de lint et de formatage" }, "task lint"],
+    [{ en: "the offline tests can run without an AWS account", fr: "les tests hors ligne peuvent tourner sans compte AWS" }, "task test"],
+    [{ en: "the AWS tests can validate the deployed environment, by hand", fr: "les tests AWS peuvent valider l’environnement réellement déployé, à la main" }, "task test-aws"],
+    [{ en: "the resources can be removed cleanly", fr: "les ressources peuvent être supprimées proprement" }, "task destroy"]
   ],
   ci: {
     title: { en: "What CI actually does", fr: "Ce que fait réellement la CI" },
     body: {
-      en: "CI checks behaviour, not just that files exist. Only half of the checks are automatic. <strong>The automatic half</strong> runs on every push and never touches AWS: Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> and tflint, ShellCheck on the shell scripts, the offline test suite, and the guards that stop Gold from reading Bronze. It needs no credentials and costs nothing. <strong>The AWS half is manual</strong>: <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, run against a real account when there is a reason to. Nothing deploys or bills on a schedule.",
-      fr: "La CI vérifie le comportement, pas seulement la présence des fichiers. Seule la moitié des contrôles est automatique. <strong>La moitié automatique</strong> s’exécute à chaque push et ne touche jamais à AWS : Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> et tflint, ShellCheck sur les scripts, la suite de tests hors ligne, et les gardes qui empêchent la Gold de lire la Bronze. Elle ne demande aucune clé et ne coûte rien. <strong>La moitié AWS est manuelle</strong> : <code>make deploy</code>, <code>make pipeline</code>, <code>make analytics</code>, <code>make test-aws</code>, <code>make destroy</code>, lancées sur un compte réel quand il y a une raison de les lancer. Rien ne se déploie ni ne se facture sur un calendrier."
+      en: "CI checks behaviour, not just that files exist. Only half of the checks are automatic. <strong>The automatic half</strong> runs on every push and never touches AWS: Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> and tflint, ShellCheck on the shell scripts, Ruff lint and format check on the Python code, the offline test suite, and the guards that stop Gold from reading Bronze. It needs no credentials and costs nothing. <strong>The AWS half is manual</strong>: <code>task deploy</code>, <code>task pipeline</code>, <code>task analytics</code>, <code>task test-aws</code>, <code>task destroy</code>, run against a real account when there is a reason to. Nothing deploys or bills on a schedule.",
+      fr: "La CI vérifie le comportement, pas seulement la présence des fichiers. Seule la moitié des contrôles est automatique. <strong>La moitié automatique</strong> s’exécute à chaque push et ne touche jamais à AWS : Terraform <code>fmt</code>, <code>init</code>, <code>validate</code> et tflint, ShellCheck sur les scripts, le lint et le contrôle de formatage Ruff sur le code Python, la suite de tests hors ligne, et les gardes qui empêchent la Gold de lire la Bronze. Elle ne demande aucune clé et ne coûte rien. <strong>La moitié AWS est manuelle</strong> : <code>task deploy</code>, <code>task pipeline</code>, <code>task analytics</code>, <code>task test-aws</code>, <code>task destroy</code>, lancées sur un compte réel quand il y a une raison de les lancer. Rien ne se déploie ni ne se facture sur un calendrier."
     }
   },
   traceTitle: { en: "What it lets me tell apart", fr: "Ce que cela me permet de distinguer" },
@@ -1864,13 +1884,13 @@ export const summary = {
     en: "With a deliberately short list of tools:",
     fr: "Avec une liste d’outils volontairement courte :"
   },
-  stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python", "pytest", "GitHub Actions"],
+  stack: ["AWS", "S3", "Glue", "Athena", "Terraform", "SQL", "Python", "pytest", "Ruff", "Taskfile", "GitHub Actions"],
   stackNote: {
     en: "The interesting part is not the number of services. It is how they fit together and how each result gets checked.",
     fr: "L’intérêt n’est pas le nombre de services. C’est la façon dont ils s’assemblent et dont chaque résultat est vérifié."
   },
   closing: {
-    en: "Every figure was measured on the source files before any AWS resource existed, then checked by the tests. Terraform defines the infrastructure, SQL defines the transformations, the Makefile runs them and the tests check them. The whole environment can be destroyed and rebuilt. That is what I wanted to show: a pipeline someone else can examine, question and reproduce.",
-    fr: "Chaque chiffre a été mesuré sur les fichiers sources avant l’existence de la moindre ressource AWS, puis vérifié par les tests. Terraform définit l’infrastructure, le SQL définit les transformations, le Makefile les lance et les tests les vérifient. Tout l’environnement peut être détruit puis reconstruit. C’est ce que je voulais montrer : un pipeline que quelqu’un d’autre peut examiner, remettre en question et reproduire."
+    en: "Every figure was measured on the source files before any AWS resource existed, then checked by the tests. Terraform defines the infrastructure, SQL defines the transformations, run_pipeline.sh runs them, the tests check them, and Taskfile gives every step one command. The whole environment can be destroyed and rebuilt. That is what I wanted to show: a pipeline someone else can examine, question and reproduce.",
+    fr: "Chaque chiffre a été mesuré sur les fichiers sources avant l’existence de la moindre ressource AWS, puis vérifié par les tests. Terraform définit l’infrastructure, le SQL définit les transformations, run_pipeline.sh les lance, les tests les vérifient, et le Taskfile donne une commande à chaque étape. Tout l’environnement peut être détruit puis reconstruit. C’est ce que je voulais montrer : un pipeline que quelqu’un d’autre peut examiner, remettre en question et reproduire."
   }
 };

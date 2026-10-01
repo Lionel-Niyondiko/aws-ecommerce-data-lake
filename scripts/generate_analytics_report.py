@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build deterministic HTML/Markdown/JSON/CSV reports from Athena result JSON files."""
+
 from __future__ import annotations
 
 import csv
@@ -42,8 +43,14 @@ def load_result(path: Path) -> tuple[list[str], list[list[str]]]:
 def table(headers: list[str], rows: list[list[str]]) -> str:
     if not headers:
         return "_Aucun résultat._\n"
-    safe = lambda value: str(value).replace("|", "\\|").replace("\n", " ")
-    out = ["| " + " | ".join(map(safe, headers)) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+
+    def safe(value: object) -> str:
+        return str(value).replace("|", "\\|").replace("\n", " ")
+
+    out = [
+        "| " + " | ".join(map(safe, headers)) + " |",
+        "| " + " | ".join(["---"] * len(headers)) + " |",
+    ]
     out.extend("| " + " | ".join(map(safe, row)) + " |" for row in rows)
     return "\n".join(out) + "\n"
 
@@ -64,7 +71,7 @@ def col(headers: list[str], rows: list[list[str]], name: str) -> list[str]:
 
 
 def first_row(headers: list[str], rows: list[list[str]]) -> dict[str, str]:
-    return dict(zip(headers, rows[0])) if rows else {}
+    return dict(zip(headers, rows[0], strict=False)) if rows else {}
 
 
 def make_summary(results: dict[str, tuple[list[str], list[list[str]]]]) -> list[str]:
@@ -74,69 +81,99 @@ def make_summary(results: dict[str, tuple[list[str], list[list[str]]]]) -> list[
     if q1:
         ca = q1.get("chiffre_affaires_net", "")
         commandes = q1.get("nombre_commandes", "")
-        lines.append(f"- **Q1 :** chiffre d'affaires net de **{ca}** pour **{commandes} commandes** sur les trois derniers mois.")
+        lines.append(
+            f"- **Q1 :** chiffre d'affaires net de **{ca}** pour **{commandes} commandes** sur les trois derniers mois."
+        )
     h, r = results.get("q1_pays", ([], []))
     if r and "pays" in h:
-        top = dict(zip(h, r[0]))
-        lines.append(f"  - Le pays en tête du chiffre d'affaires est **{top.get('pays', '')}**, avec **{top.get('chiffre_affaires', '')}** ({top.get('part_chiffre_affaires_pct', '')} %).")
+        top = dict(zip(h, r[0], strict=False))
+        lines.append(
+            f"  - Le pays en tête du chiffre d'affaires est **{top.get('pays', '')}**, avec **{top.get('chiffre_affaires', '')}** ({top.get('part_chiffre_affaires_pct', '')} %)."
+        )
 
     h, r = results.get("q2_top_chiffre_affaires", ([], []))
     if r:
-        top = dict(zip(h, r[0]))
-        lines.append(f"- **Q2 :** le produit en tête par chiffre d'affaires est **{top.get('produit', '')}**, avec **{top.get('chiffre_affaires', '')}**.")
+        top = dict(zip(h, r[0], strict=False))
+        lines.append(
+            f"- **Q2 :** le produit en tête par chiffre d'affaires est **{top.get('produit', '')}**, avec **{top.get('chiffre_affaires', '')}**."
+        )
     h, r = results.get("q2_top_quantite", ([], []))
     if r:
-        top = dict(zip(h, r[0]))
-        lines.append(f"  - Le produit en tête par quantité vendue est **{top.get('produit', '')}**, avec **{top.get('quantite_vendue', '')}** unités.")
+        top = dict(zip(h, r[0], strict=False))
+        lines.append(
+            f"  - Le produit en tête par quantité vendue est **{top.get('produit', '')}**, avec **{top.get('quantite_vendue', '')}** unités."
+        )
     h, r = results.get("q2_comparaison", ([], []))
     if r and "statut_top_10" in h:
         i = h.index("statut_top_10")
         both = sum(1 for row in r if len(row) > i and row[i] == "Dans les deux Top 10")
-        lines.append(f"  - Le tableau de comparaison identifie **{both} produits** présents dans les deux Top 10.")
+        lines.append(
+            f"  - Le tableau de comparaison identifie **{both} produits** présents dans les deux Top 10."
+        )
 
     h, r = results.get("q3_mensuel", ([], []))
     if r and "chiffre_affaires" in h:
         i_ca = h.index("chiffre_affaires")
-        valid = [(as_float(row[i_ca]), row) for row in r if len(row) > i_ca and as_float(row[i_ca]) is not None]
+        valid = [
+            (as_float(row[i_ca]), row)
+            for row in r
+            if len(row) > i_ca and as_float(row[i_ca]) is not None
+        ]
         if valid:
             top = max(valid, key=lambda x: x[0])[1]
-            label = " ".join(str(top[h.index(k)]) for k in ("nom_mois", "annee") if k in h and h.index(k) < len(top))
-            lines.append(f"- **Q3 :** le chiffre d'affaires mensuel maximal est observé en **{label.strip()}**, à **{top[i_ca]}**.")
+            label = " ".join(
+                str(top[h.index(k)])
+                for k in ("nom_mois", "annee")
+                if k in h and h.index(k) < len(top)
+            )
+            lines.append(
+                f"- **Q3 :** le chiffre d'affaires mensuel maximal est observé en **{label.strip()}**, à **{top[i_ca]}**."
+            )
 
     h, r = results.get("q4_panier_par_pays", ([], []))
     if r and "panier_moyen" in h:
         i = h.index("panier_moyen")
-        valid = [(as_float(row[i]), row) for row in r if len(row) > i and as_float(row[i]) is not None]
+        valid = [
+            (as_float(row[i]), row) for row in r if len(row) > i and as_float(row[i]) is not None
+        ]
         if valid:
             top = max(valid, key=lambda x: x[0])[1]
-            lines.append(f"- **Q4 :** le panier moyen le plus élevé est celui du pays **{top[0]}**, à **{top[i]}**.")
+            lines.append(
+                f"- **Q4 :** le panier moyen le plus élevé est celui du pays **{top[0]}**, à **{top[i]}**."
+            )
 
     h, r = results.get("q5_top_clients", ([], []))
     if r:
-        top = dict(zip(h, r[0]))
-        lines.append(f"- **Q5 :** le premier client du classement cumulé est **{top.get('client', '')}**, avec **{top.get('chiffre_affaires', '')}** de chiffre d'affaires.")
+        top = dict(zip(h, r[0], strict=False))
+        lines.append(
+            f"- **Q5 :** le premier client du classement cumulé est **{top.get('client', '')}**, avec **{top.get('chiffre_affaires', '')}** de chiffre d'affaires."
+        )
 
     h, r = results.get("q6_population_orpheline", ([], []))
     if r and "population" in h:
         i_pop = h.index("population")
         i_rows = h.index("nombre_lignes") if "nombre_lignes" in h else None
         i_ca = h.index("chiffre_affaires") if "chiffre_affaires" in h else None
-        i_pct = h.index("part_chiffre_affaires_pct") if "part_chiffre_affaires_pct" in h else None
         orphan = [row for row in r if len(row) > i_pop and row[i_pop] != "Cles completes"]
         if orphan and i_rows is not None and i_ca is not None:
             total_rows = sum(int(row[i_rows]) for row in orphan if row[i_rows].isdigit())
             revenue = sum(as_float(row[i_ca]) or 0 for row in orphan)
-            lines.append(f"- **Q6 :** les populations à clés orphelines représentent **{total_rows} lignes** et environ **{revenue:.2f}** de chiffre d'affaires cumulé.")
+            lines.append(
+                f"- **Q6 :** les populations à clés orphelines représentent **{total_rows} lignes** et environ **{revenue:.2f}** de chiffre d'affaires cumulé."
+            )
     h, r = results.get("q6_impact_cles_orphelines", ([], []))
     if r:
         impact = first_row(h, r)
-        lines.append(f"  - Le filtrage des clés orphelines ferait perdre **{impact.get('lignes_perdues', '')} lignes** et **{impact.get('chiffre_affaires_perdu', '')}** de chiffre d'affaires.")
+        lines.append(
+            f"  - Le filtrage des clés orphelines ferait perdre **{impact.get('lignes_perdues', '')} lignes** et **{impact.get('chiffre_affaires_perdu', '')}** de chiffre d'affaires."
+        )
 
     return lines
 
 
 def html_escape(value: Any) -> str:
     import html
+
     return html.escape(str(value), quote=True)
 
 
@@ -148,10 +185,18 @@ def html_table(headers: list[str], rows: list[list[str]]) -> str:
     for row in rows:
         cells = "".join(f"<td>{html_escape(v)}</td>" for v in row)
         body.append(f"<tr>{cells}</tr>")
-    return '<div class="table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + ''.join(body) + '</tbody></table></div>'
+    return (
+        '<div class="table-wrap"><table><thead><tr>'
+        + head
+        + "</tr></thead><tbody>"
+        + "".join(body)
+        + "</tbody></table></div>"
+    )
 
 
-def make_html(generated_at: str, questions: dict[str, list[dict[str, Any]]], summary: list[str]) -> str:
+def make_html(
+    generated_at: str, questions: dict[str, list[dict[str, Any]]], summary: list[str]
+) -> str:
     import html
 
     summary_html = []
@@ -169,18 +214,18 @@ def make_html(generated_at: str, questions: dict[str, list[dict[str, Any]]], sum
             blocks.append(
                 f'<article class="query">'
                 f'<div class="query-title"><span class="query-id">{html_escape(entry["id"])}</span>'
-                f'<h3>{html_escape(entry["titre"])}</h3></div>'
-                f'{html_table(entry["colonnes"], entry["lignes"])}'
-                f'</article>'
+                f"<h3>{html_escape(entry['titre'])}</h3></div>"
+                f"{html_table(entry['colonnes'], entry['lignes'])}"
+                f"</article>"
             )
-        content = ''.join(blocks) if blocks else '<p class="empty">Aucun résultat.</p>'
+        content = "".join(blocks) if blocks else '<p class="empty">Aucun résultat.</p>'
         sections.append(
             f'<section id="{qnum.lower()}"><div class="section-head">'
             f'<span class="section-number">{qnum}</span><h2>Question métier {qnum[1:]}</h2>'
-            f'</div>{content}</section>'
+            f"</div>{content}</section>"
         )
 
-    return f'''<!doctype html>
+    return f"""<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -227,13 +272,14 @@ footer {{ border-top:1px solid var(--line); padding-top:18px; color:var(--muted)
   <div class="subtitle">Restitution des six questions métier exécutées dans Amazon Athena. Les tableaux ci-dessous proviennent directement des résultats des requêtes.</div>
   <div class="meta">Généré le {html_escape(generated_at)}</div>
 </header>
-<div class="summary"><h2>Synthèse factuelle</h2><ul>{''.join(summary_html) if summary_html else '<li>Aucune synthèse disponible.</li>'}</ul></div>
-{''.join(sections)}
+<div class="summary"><h2>Synthèse factuelle</h2><ul>{"".join(summary_html) if summary_html else "<li>Aucune synthèse disponible.</li>"}</ul></div>
+{"".join(sections)}
 <footer>Source : <code>sql/05_analytics.sql</code> · Résultats Athena archivés avec cette exécution.</footer>
 </main>
 </body>
 </html>
-'''
+"""
+
 
 def main() -> int:
     if len(sys.argv) != 2:
@@ -261,13 +307,15 @@ def main() -> int:
     questions: dict[str, list[dict[str, Any]]] = {f"Q{i}": [] for i in range(1, 7)}
     for name, (headers, rows) in results.items():
         q, title, order = QUERY_META.get(name, ("Annexe", name, 99))
-        questions.setdefault(q, []).append({
-            "id": name,
-            "titre": title,
-            "ordre": order,
-            "colonnes": headers,
-            "lignes": rows,
-        })
+        questions.setdefault(q, []).append(
+            {
+                "id": name,
+                "titre": title,
+                "ordre": order,
+                "colonnes": headers,
+                "lignes": rows,
+            }
+        )
     for entries in questions.values():
         entries.sort(key=lambda x: x["ordre"])
 
@@ -275,7 +323,9 @@ def main() -> int:
         "genere_le": generated_at,
         "questions": questions,
     }
-    (report_dir / "report.json").write_text(json.dumps(report_json, ensure_ascii=False, indent=2), encoding="utf-8")
+    (report_dir / "report.json").write_text(
+        json.dumps(report_json, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     # Long CSV, convenient for spreadsheet/pivot use.
     with (report_dir / "report.csv").open("w", newline="", encoding="utf-8-sig") as fh:
@@ -284,7 +334,7 @@ def main() -> int:
         for name, (headers, rows) in results.items():
             q = QUERY_META.get(name, ("Annexe", name, 99))[0]
             for row_num, row in enumerate(rows, start=1):
-                for header, value in zip(headers, row):
+                for header, value in zip(headers, row, strict=False):
                     writer.writerow([q, name, row_num, header, value])
 
     md: list[str] = [
@@ -304,7 +354,9 @@ def main() -> int:
             md.extend([f"### {entry['titre']}", "", table(entry["colonnes"], entry["lignes"]), ""])
 
     (report_dir / "report.md").write_text("\n".join(md), encoding="utf-8")
-    (report_dir / "report.html").write_text(make_html(generated_at, questions, make_summary(results)), encoding="utf-8")
+    (report_dir / "report.html").write_text(
+        make_html(generated_at, questions, make_summary(results)), encoding="utf-8"
+    )
     print(report_dir / "report.html")
     return 0
 
