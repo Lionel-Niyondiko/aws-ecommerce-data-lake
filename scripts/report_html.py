@@ -368,16 +368,21 @@ def overview(results: Results) -> str:
     else:
         risk = ""
 
+    grid_cls = "overview-grid" if risk else "overview-grid solo"
     return (
         '<section id="synthese" class="overview" aria-label="Vue d\'ensemble">'
-        f'<div class="overview-grid">{hero}{bridge}{risk}</div>'
+        f'<div class="{grid_cls}"><div class="ov-main">{hero}{bridge}</div>{risk}</div>'
         f"{findings(results)}</section>"
     )
 
 
 def findings(results: Results) -> str:
-    """The six headline facts, picked with the same rules as make_summary()."""
-    items: list[tuple[str, str]] = []
+    """The six headline facts, picked with the same rules as make_summary().
+
+    Each item is (question id, lead figure, sentence). The lead figure is a value
+    already quoted in the sentence, set apart so the list can be scanned by number.
+    """
+    items: list[tuple[str, str, str]] = []
 
     pays = records(results.get("q1_pays"))
     if pays:
@@ -385,6 +390,7 @@ def findings(results: Results) -> str:
         items.append(
             (
                 "q1",
+                fmt_pct(p.get("part_chiffre_affaires_pct")),
                 f"<b>{esc(p.get('pays', ''))}</b> mène le chiffre d'affaires avec "
                 f"{esc(fmt_money(p.get('chiffre_affaires')))}, soit "
                 f"{esc(fmt_pct(p.get('part_chiffre_affaires_pct')))} du total.",
@@ -410,7 +416,12 @@ def findings(results: Results) -> str:
         both = sum(1 for c in comp if c.get("statut_top_10") == "Dans les deux Top 10")
         if comp:
             text += f" {both} produits figurent dans les deux Top 10."
-        items.append(("q2", text))
+            lead = f"{fmt_int(both)} produits"
+        elif top_ca:
+            lead = fmt_money_compact(top_ca[0].get("chiffre_affaires"))
+        else:
+            lead = f"{fmt_int(top_qty[0].get('quantite_vendue'))} unités"
+        items.append(("q2", lead, text))
 
     months = [m for m in records(results.get("q3_mensuel")) if num(m.get("chiffre_affaires"))]
     if months:
@@ -418,6 +429,7 @@ def findings(results: Results) -> str:
         items.append(
             (
                 "q3",
+                fmt_money_compact(peak["chiffre_affaires"]),
                 f"Le mois le plus fort est <b>{esc(month_label(peak))}</b>, à "
                 f"{esc(fmt_money(peak['chiffre_affaires']))}.",
             )
@@ -429,6 +441,7 @@ def findings(results: Results) -> str:
         items.append(
             (
                 "q4",
+                fmt_money(top["panier_moyen"]),
                 f"Le panier moyen le plus élevé est en <b>{esc(top.get('pays', ''))}</b> : "
                 f"{esc(fmt_money(top['panier_moyen']))}.",
             )
@@ -440,6 +453,7 @@ def findings(results: Results) -> str:
         items.append(
             (
                 "q5",
+                fmt_money(c.get("chiffre_affaires")),
                 f"<b>{esc(c.get('client', ''))}</b> est le premier client, avec "
                 f"{esc(fmt_money(c.get('chiffre_affaires')))} cumulés.",
             )
@@ -451,6 +465,7 @@ def findings(results: Results) -> str:
         items.append(
             (
                 "q6",
+                f"{fmt_int(i.get('lignes_perdues'))} lignes",
                 f"Filtrer les clés orphelines ferait perdre <b>{esc(fmt_int(i.get('lignes_perdues')))} lignes</b> "
                 f"et {esc(fmt_money(i.get('chiffre_affaires_perdu')))} de chiffre d'affaires.",
             )
@@ -459,8 +474,9 @@ def findings(results: Results) -> str:
     if not items:
         return ""
     lis = "".join(
-        f'<li><a href="#{qid}"><span class="qid">{qid.upper()}</span><span>{text}</span></a></li>'
-        for qid, text in items
+        f'<li><a href="#{qid}"><span class="qid">{qid.upper()}</span>'
+        f'<span class="fig">{esc(fig)}</span><span class="txt">{text}</span></a></li>'
+        for qid, fig, text in items
     )
     return f'<div class="findings"><h2 class="block-h">À retenir</h2><ol>{lis}</ol></div>'
 
@@ -566,6 +582,25 @@ def slopegraph(rows: list[dict[str, str]]) -> str:
     return "".join(parts)
 
 
+def rank_compare(rows: list[dict[str, str]], legend: str) -> str:
+    """The slopegraph as a list, for phones. Same ranks, same two statuses."""
+    ordered = sorted(rows, key=lambda r: num(r.get("rang_chiffre_affaires")) or 0)
+    items = []
+    for r in ordered:
+        rc, rq = num(r.get("rang_chiffre_affaires")) or 0, num(r.get("rang_quantite")) or 0
+        both = r.get("statut_top_10") == "Dans les deux Top 10"
+        items.append(
+            f'<li class="{"both" if both else "only"}"><span class="rc-n">{esc(r.get("produit", ""))}</span>'
+            f'<span class="rc-r{" out" if rc > 10 else ""}">{fmt_int(rc)}</span>'
+            f'<span class="rc-r{" out" if rq > 10 else ""}">{fmt_int(rq)}</span></li>'
+        )
+    return (
+        '<div class="rank-compare">'
+        '<p class="rc-head"><span>Produit</span><span>Rang CA</span><span>Rang quantité</span></p>'
+        f"<ol>{''.join(items)}</ol>{legend}</div>"
+    )
+
+
 def section_q2(results: Results) -> str:
     comp = records(results.get("q2_comparaison"))
     both = sum(1 for c in comp if c.get("statut_top_10") == "Dans les deux Top 10")
@@ -603,6 +638,7 @@ def section_q2(results: Results) -> str:
         '<div class="split split-slope">'
         f'<div class="chart chart-slope"><div class="scroll-x">{slopegraph(comp)}</div>'
         f'<div class="chart-foot">{legend}{source("q2_comparaison")}</div></div>'
+        f"{rank_compare(comp, legend)}"
         f'<aside class="groups"><p class="block-title">Par statut</p>{reading}</aside></div>'
         f'<div class="tables">{tables}</div></section>'
     )
@@ -617,6 +653,7 @@ def columns(
     title: str,
     highlight: int | None = None,
     height: str = "260px",
+    sublabels: list[str] | None = None,
 ) -> str:
     """Column chart in HTML/CSS, so its text keeps a real size at every width."""
     vmax = max(values) if values else 0
@@ -629,15 +666,17 @@ def columns(
             f'<span class="tick" style="bottom:{t / ymax * 100:.2f}%"><b>{esc(fmt_tick(t))}</b></span>'
         )
         t += step
+    subs = sublabels or [""] * len(values)
     cols = []
-    for i, (label, v, tip) in enumerate(zip(labels, values, tips, strict=False)):
+    for i, (label, v, tip, sub) in enumerate(zip(labels, values, tips, subs, strict=False)):
         cls = "mark accent" if i == highlight else "mark"
+        sub_html = f"<small>{esc(sub)}</small>" if sub else ""
         cols.append(
             f'<div class="cc-col" title="{esc(tip)}">'
             f'<div class="cc-bar-area"><span class="cc-val" style="bottom:{v / ymax * 100:.2f}%">'
             f"{esc(fmt_value(v))}</span>"
             f'<i class="{cls}" style="height:{v / ymax * 100:.2f}%"></i></div>'
-            f'<span class="cc-x">{esc(label)}</span></div>'
+            f'<span class="cc-x">{esc(label)}{sub_html}</span></div>'
         )
     return (
         f'<div class="cc" role="img" aria-label="{esc(title)}" style="--cc-h:{height}">'
@@ -652,7 +691,8 @@ def section_q3(results: Results) -> str:
     head = section_head(
         "Q3",
         "Comment évoluent les ventes",
-        "Chiffre d'affaires, commandes et panier moyen, mois par mois.",
+        "Chiffre d'affaires par mois, avec le nombre de commandes sous chaque mois. "
+        "Le panier moyen figure dans le détail mensuel.",
     )
     if not months:
         return f'<section id="q3" class="sec">{head}{empty_state("Aucun résultat pour q3_mensuel.")}</section>'
@@ -668,6 +708,7 @@ def section_q3(results: Results) -> str:
         fmt_axis_money,
         "Chiffre d'affaires par mois",
         highlight=values.index(max(values)) if values else None,
+        sublabels=[f"{fmt_int(m.get('nombre_commandes'))} cmd." for m in months],
     )
     chart = f'<div class="chart">{chart_html}{source("q3_mensuel")}</div>'
 
@@ -710,7 +751,7 @@ def section_q3(results: Results) -> str:
     return (
         f'<section id="q3" class="sec">{head}'
         f'<div class="split split-trend">{chart}{control}</div>'
-        f'<div class="table-block">{data_table(*results["q3_mensuel"])}</div></section>'
+        f"{disclosure('q3_mensuel', results.get('q3_mensuel'), 'Détail mensuel')}</section>"
     )
 
 
@@ -962,6 +1003,12 @@ def render_report(
     results: Results,
 ) -> str:
     stamp = format_timestamp(generated_at)
+    n_sets = len(results)
+    n_rows = sum(len(rows) for _, rows in results.values())
+    provenance = (
+        f"{fmt_int(n_sets)} résultat{'s' if n_sets > 1 else ''} Athena, "
+        f"{fmt_int(n_rows)} ligne{'s' if n_rows > 1 else ''}"
+    )
     nav = "".join(f'<a href="#{i}">{esc(label)}</a>' for i, label in NAV)
     body = (
         overview(results)
@@ -998,6 +1045,11 @@ def render_report(
   <div class="intro">
     <h1>Rapport analytique <span class="nw">e-commerce</span></h1>
     <p>Six questions métier calculées dans Amazon Athena sur le modèle en étoile du data lake.</p>
+    <p class="provenance">
+      <span>Généré le <time datetime="{esc(generated_at)}">{esc(stamp)}</time></span>
+      <span>{esc(provenance)}</span>
+      <span>Requêtes&nbsp;: <code>sql/05_analytics.sql</code></span>
+    </p>
   </div>
   {body}
 </main>
@@ -1091,6 +1143,8 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 .intro h1{margin:0;font-size:clamp(1.75rem,1.3rem + 1.6vw,2.5rem);font-weight:600;letter-spacing:-.03em;line-height:1.1}
 .nw{white-space:nowrap}
 .intro p{margin:var(--s3) 0 0;color:var(--muted);font-size:16px;text-wrap:balance}
+.intro .provenance{margin-top:var(--s5);font:400 12.5px/1.5 var(--mono);color:var(--faint);text-wrap:wrap}
+.intro .provenance code{color:var(--muted)}
 
 /* Shared text roles. block-title is the one small label style; it names a
    block, never sits above a section headline. */
@@ -1105,17 +1159,18 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 /* Executive overview: one featured figure, a bridge, a risk flag. Three
    different weights on purpose. */
 .overview{padding-bottom:var(--s8)}
-.overview-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,.85fr);
-  border-top:1px solid var(--line-2);border-bottom:1px solid var(--line)}
-.overview-grid>*{padding:var(--s6) var(--s6) var(--s6) 0}
-.overview-grid>*+*{padding-left:var(--s6);border-left:1px solid var(--line)}
+.overview-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:var(--s7);
+  border-top:1px solid var(--line-2);padding-top:var(--s6)}
+.overview-grid.solo{grid-template-columns:minmax(0,1fr)}
+.ov-main{min-width:0}
 .kpi-label{margin:0;font-size:14px;color:var(--muted)}
-.kpi-value{margin:var(--s2) 0 var(--s2);font-size:clamp(2.6rem,1.6rem + 3.2vw,4.25rem);font-weight:600;
-  letter-spacing:-.045em;line-height:1}
+.kpi-value{margin:var(--s2) 0 var(--s3);font-size:clamp(3rem,1.8rem + 4.4vw,5.5rem);font-weight:600;
+  letter-spacing:-.05em;line-height:1}
+.bridge{margin-top:var(--s6);padding-top:var(--s5);border-top:1px solid var(--line);max-width:34rem}
 .kpi-value .unit{font-size:.5em;letter-spacing:0;color:var(--muted);font-weight:500}
 .kpi-context{margin:0;color:var(--ink-2)}
 .bridge-row{display:grid;grid-template-columns:4.5rem minmax(0,1fr) auto;gap:var(--s3);align-items:center;
-  padding:7px 0;font-size:14px}
+  padding:var(--s2) 0;font-size:14px}
 .bridge-k{color:var(--muted)}
 .bridge-bar{height:10px;display:block}
 .bridge-bar i{display:block;height:100%;border-radius:var(--r-mark)}
@@ -1124,20 +1179,24 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 .mark.strong{background:var(--mark-strong);fill:var(--mark-strong)}
 .mark.soft{background:var(--mark);opacity:.55;min-width:3px}
 .mark.accent{background:var(--accent);fill:var(--accent)}
-.risk{display:block;text-decoration:none;position:relative;transition:background .2s var(--ease)}
+.risk{display:block;align-self:start;text-decoration:none;border-left:2px solid var(--accent);
+  padding:var(--s1) 0 var(--s1) var(--s5);transition:background .2s var(--ease)}
 .risk:hover{background:var(--accent-wash)}
-.risk-value{margin:0;font-size:2.4rem;font-weight:600;letter-spacing:-.035em;line-height:1;color:var(--accent-ink)}
-.risk-text{margin:var(--s3) 0 0;font-size:14px;color:var(--ink-2);max-width:34ch}
+.risk-value{margin:0;font-size:clamp(2.75rem,1.9rem + 2.6vw,4rem);font-weight:600;letter-spacing:-.045em;line-height:1;color:var(--accent-ink)}
+.risk-text{margin:var(--s3) 0 0;font-size:14.5px;color:var(--ink-2);max-width:34ch}
 
 .findings{padding-top:var(--s7)}
 .findings ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   column-gap:var(--s7)}
 .findings li{border-top:1px solid var(--line)}
-.findings a{display:grid;grid-template-columns:2.25rem 1fr;gap:var(--s2);padding:var(--s4) 0;text-decoration:none;
-  color:var(--ink-2);transition:color .2s var(--ease)}
+.findings a{display:grid;grid-template-columns:2.25rem minmax(6rem,8.5rem) minmax(0,1fr);gap:var(--s2) var(--s3);
+  align-items:baseline;padding:var(--s4) 0;text-decoration:none;color:var(--ink-2);transition:color .2s var(--ease)}
 .findings a:hover{color:var(--ink)}
 .findings a:hover .qid{color:var(--accent)}
 .findings b{color:var(--ink)}
+.findings .fig{font-size:1.25rem;font-weight:600;letter-spacing:-.025em;line-height:1.2;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.provenance{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5)}
 
 /* Sections */
 .sec{padding:var(--s8) 0;border-top:1px solid var(--line-2)}
@@ -1156,7 +1215,7 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 /* Q1 bar list */
 .barlist{list-style:none;margin:0;padding:0}
 .barlist li{display:grid;grid-template-columns:8.5rem minmax(0,1fr) 8.5rem 4.5rem;gap:var(--s3);align-items:center;
-  padding:6px 0;font-size:14px;border-radius:var(--r-ctl)}
+  padding:var(--s2) 0;font-size:14px;border-radius:var(--r-ctl)}
 .barlist li:hover .bl-bar i{filter:brightness(.85)}
 .bl-k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bl-bar{height:14px;display:block}
@@ -1188,6 +1247,18 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 .slope .p:hover circle,.slope .p:focus circle{fill:var(--accent);stroke:var(--accent)}
 .slope .p:hover .nm,.slope .p:focus .nm{fill:var(--ink);font-weight:600}
 .tables{margin-top:var(--s5)}
+/* Phones: the slopegraph becomes a ranked list. Same ranks, same two statuses. */
+.rank-compare{display:none}
+.rc-head,.rank-compare li{display:grid;grid-template-columns:minmax(0,1fr) 4.5rem 6rem;gap:var(--s3);align-items:baseline}
+.rc-head{margin:0;padding-bottom:var(--s2);border-bottom:1px solid var(--line);font-size:12px;color:var(--faint)}
+.rc-head span+span,.rc-r{text-align:right;font-variant-numeric:tabular-nums}
+.rank-compare ol{list-style:none;margin:0 0 var(--s4);padding:0}
+.rank-compare li{padding:var(--s2) 0;font-size:14px;border-bottom:1px solid var(--line)}
+.rc-n{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.rc-n::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--mark-strong)}
+.only .rc-n{color:var(--muted)}
+.only .rc-n::before{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--mark)}
+.rc-r.out{color:var(--faint)}
 .split-slope{grid-template-columns:minmax(0,2.6fr) minmax(0,1fr)}
 .groups{display:grid;gap:var(--s4);padding-top:var(--s5)}
 .groups .block-title{margin:0}
@@ -1215,7 +1286,8 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 .cc-bar-area i{display:block;width:min(64%,72px);border-radius:var(--r-mark) var(--r-mark) 0 0;transition:filter .2s var(--ease)}
 .cc-col:hover .cc-bar-area i{filter:brightness(.85)}
 .cc-val{position:absolute;left:0;right:0;text-align:center;margin-bottom:6px;font-size:12.5px;font-weight:600;white-space:nowrap}
-.cc-x{margin-top:var(--s2);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.cc-x{margin-top:var(--s2);font-size:12.5px;color:var(--muted);white-space:nowrap;text-align:center}
+.cc-x small{display:block;margin-top:2px;font-size:12px;color:var(--faint)}
 .control{display:grid;gap:var(--s5)}
 .control .block-title{margin:0}
 .check{border-top:1px solid var(--line);padding-top:var(--s4)}
@@ -1241,7 +1313,7 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 .db-axis span:last-child{transform:translateX(-100%)}
 .db-cols{display:grid;grid-template-columns:1fr 1fr;text-align:right}
 .dumbbell{list-style:none;margin:0;padding:0}
-.dumbbell li{padding:7px 0;font-size:14px}
+.dumbbell li{padding:var(--s2) 0;font-size:14px}
 .dumbbell li:hover .seg{background:var(--mark-strong)}
 .db-plot{position:relative;height:14px}
 .db-plot .seg{position:absolute;top:6px;height:2px;background:var(--mark);transition:background .2s var(--ease)}
@@ -1256,7 +1328,7 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 var(--gutter)}
 /* Tables: right-aligned figures, one hairline between rows, sticky header. */
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-box);background:var(--surface)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{padding:9px 14px;text-align:left;vertical-align:baseline;white-space:nowrap}
+th,td{padding:var(--s2) var(--s4);text-align:left;vertical-align:baseline;white-space:nowrap}
 thead th{font-size:12px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line-2);background:var(--surface)}
 tbody tr+tr td,tbody tr+tr th{border-top:1px solid var(--line)}
 tbody tr{transition:background .15s var(--ease)}
@@ -1265,7 +1337,7 @@ td.num,th.num{text-align:right}
 td.num{font-variant-numeric:tabular-nums}
 td.id{font-family:var(--mono);font-size:12px;color:var(--faint)}
 td.empty-row{color:var(--muted);text-align:center;padding:var(--s5)}
-.leader td{padding:12px 14px;vertical-align:middle}
+.leader td{padding:var(--s3) var(--s4);vertical-align:middle}
 .leader .rank{font:500 13px var(--mono);color:var(--faint);width:2.5rem}
 .leader .who{display:block;font-weight:600;color:var(--ink)}
 .leader .sub{display:block;font-size:12.5px;color:var(--muted)}
@@ -1321,9 +1393,7 @@ details.data .table-wrap{margin-bottom:var(--s4)}
 }
 /* Tablet */
 @media (max-width:1024px){
-  .overview-grid{grid-template-columns:1fr 1fr}
-  .overview-grid>.kpi-hero{grid-column:1/-1;border-bottom:1px solid var(--line)}
-  .overview-grid>.bridge{padding-left:0;border-left:0}
+  .overview-grid{grid-template-columns:1fr;gap:var(--s6)}
   .split-chart,.split-trend,.split-risk,.split-slope{grid-template-columns:1fr;gap:var(--s6)}
   .note{max-width:52ch}
 }
@@ -1331,6 +1401,8 @@ details.data .table-wrap{margin-bottom:var(--s4)}
   .brand span{display:none}
   .topbar-in{gap:var(--s3)}
   .findings ol{grid-template-columns:1fr}
+  .findings a{grid-template-columns:2.25rem minmax(0,1fr)}
+  .findings .fig,.findings .txt{grid-column:2}
   .hide-md{display:none}
   .barlist li{grid-template-columns:6.5rem minmax(0,1fr) auto;row-gap:2px}
   .bl-p{display:none}
@@ -1344,10 +1416,7 @@ details.data .table-wrap{margin-bottom:var(--s4)}
   .brand{display:none}
   .topbar-in{grid-template-columns:minmax(0,1fr)}
   .topbar nav{justify-self:stretch}
-  .overview-grid{grid-template-columns:1fr}
-  .overview-grid>*,.overview-grid>*+*{padding:var(--s5) 0;border-left:0}
-  .overview-grid>*+*{border-top:1px solid var(--line)}
-  .overview-grid>.kpi-hero{border-bottom:0}
+  .risk{padding-left:var(--s4)}
   .sec{padding:var(--s7) 0}
   .barlist li{grid-template-columns:7.25rem minmax(0,1fr) auto}
   .db-head,.dumbbell li{grid-template-columns:7.25rem minmax(0,1fr) 6.5rem}
@@ -1355,6 +1424,8 @@ details.data .table-wrap{margin-bottom:var(--s4)}
   .leader .ca{min-width:0}
   .inline-bar{display:none}
   .chart-slope{display:none}
+  .rank-compare{display:block}
+  .cc-bar-area i{width:min(72%,72px)}
   .groups{padding-top:0}
   .foot-in{flex-direction:column}
 }
