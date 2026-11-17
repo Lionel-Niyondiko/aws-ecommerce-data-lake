@@ -271,6 +271,14 @@ function renderCover() {
       <span class="led-k">${esc(t(m.label))}</span>
     </li>`).join(""));
 
+  /* The pipeline marker: bronze, silver and gold with their measured volumes,
+     read from the same medallion data the layers section uses. */
+  set("#cover-pipeline", medallion.map((l) => `
+    <li class="pl-st pl-${attr(l.id)}">
+      <span class="pl-name">${esc(t(l.name))}</span>
+      <span class="pl-vol">${esc(t(l.volume))}</span>
+    </li>`).join(""));
+
   set("#cover-lede", esc(t(meta.lede)));
   set("#cover-zones", `
     <p class="zones-line"><code>${esc(meta.zonesLine)}</code></p>
@@ -536,6 +544,16 @@ function renderBlock(block) {
 const stageLabel = (id) => t((stages.find((s) => s.id === id) || {}).label);
 let current = 0;
 
+/* The three steps that build a data layer carry that layer's colour in the
+   timeline, the step list and the step header. Structural mapping only: the
+   layer names shown come from the medallion data. */
+const LAYER_OF = { ingest: "bronze", silver: "silver", gold: "gold" };
+const layerAttr = (s) => (LAYER_OF[s.id] ? ` data-layer="${LAYER_OF[s.id]}"` : "");
+const layerChip = (s) => {
+  const l = medallion.find((x) => x.id === LAYER_OF[s.id]);
+  return l ? `<span class="is-layer" data-layer="${attr(l.id)}">${esc(t(l.name))}</span>` : "";
+};
+
 function renderWalkChrome() {
   set("#walkthrough-title", esc(t(sections.walkthrough.title)));
   set("#walkthrough-note", t(sections.walkthrough.note));
@@ -552,7 +570,7 @@ function renderWalkChrome() {
       <li class="tl-stage" data-stage="${attr(st.id)}" style="--n:${own.length}">
         <p class="tl-head"><b>${esc(t(st.label))}</b><span>${esc(t(tpl).replace("%n", String(own.length)))}</span></p>
         <div class="tl-ticks">${own.map(({ s, i }) => `
-          <button type="button" class="tl-tick" data-step="${attr(s.id)}" data-i="${i}"
+          <button type="button" class="tl-tick" data-step="${attr(s.id)}" data-i="${i}"${layerAttr(s)}
                   aria-label="${attr(`${s.n} ${t(s.label)}`)}"><span>${esc(s.n)}</span></button>`).join("")}
         </div>
       </li>`;
@@ -565,7 +583,7 @@ function renderWalkChrome() {
       <li class="sl-group">
         <p class="sl-stage">${esc(t(st.label))}</p>
         <ol>${own.map((s) => `
-          <li><button type="button" data-step="${attr(s.id)}">
+          <li><button type="button" data-step="${attr(s.id)}"${layerAttr(s)}>
             <span class="num">${esc(s.n)}</span><span class="txt">${esc(t(s.label))}</span>
           </button></li>`).join("")}</ol>
       </li>`;
@@ -627,6 +645,7 @@ function stepMarkup(s) {
         <p class="step-meta">
           <span>${esc(stageLabel(s.stage))}</span>
           <span>${esc(s.duration)}</span>
+          ${layerChip(s)}
           ${s.partOfPipeline ? `<span class="is-pipe">${esc(t(ui.inPipeline))} <code>task pipeline</code></span>` : ""}
         </p>
         <h3 class="step-title">${esc(t(s.title))}</h3>
@@ -659,6 +678,7 @@ function show(index, { push = true, focus = false, dir = 0, scroll = false } = {
 
   panel.innerHTML = stepMarkup(s);
   panel.dataset.step = s.id;
+  watchScrollers();
 
   if (dir && !reduceMotion()) {
     panel.classList.remove("enter-next", "enter-prev");
@@ -848,6 +868,12 @@ async function renderDiagram() {
   const holder = $("#svg-holder");
   const caption = $("#svg-caption");
 
+  /* The diagram keeps a legible minimum width on small screens, so the holder
+     scrolls sideways. It must then be reachable from the keyboard. */
+  holder.setAttribute("tabindex", "0");
+  holder.setAttribute("role", "group");
+  holder.setAttribute("aria-label", t(ui.diagramAlt));
+
   if (diagramLoaded) {
     const svg = holder.querySelector("svg");
     const desc = holder.querySelector("desc");
@@ -944,7 +970,30 @@ function render() {
   show(current, { push: false });
   renderDiagram();
   observeReveals();
+  watchScrollers();
 }
+
+/* Wide code, terminal and table blocks scroll sideways inside their own box.
+   A soft inner edge shows that more is hidden on the right, and goes away at
+   the end of the scroll. */
+const SCROLLERS = "pre, .term-body, .versus";
+function updateCue(el) {
+  el.classList.toggle("has-more", el.scrollWidth - el.clientWidth - el.scrollLeft > 2);
+}
+function watchScrollers() {
+  $$(SCROLLERS).forEach((el) => {
+    if (!el.dataset.cue) {
+      el.dataset.cue = "1";
+      el.addEventListener("scroll", () => updateCue(el), { passive: true });
+    }
+    updateCue(el);
+  });
+}
+let cueFrame = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(cueFrame);
+  cueFrame = requestAnimationFrame(watchScrollers);
+});
 
 function setLanguage(next) {
   if (!SUPPORTED.includes(next) || next === lang) return;

@@ -2,6 +2,14 @@
 
 [English](README.md) · **Français**
 
+<p align="center">
+  <a href="docs/media/aws-ecommerce-data-lake-linkedin-1920x1080.mp4">
+    <img src="docs/media/aws-ecommerce-data-lake-cover-1920x1080.png" alt="Vidéo du projet : des sources brutes à un modèle analytique fiable" width="720">
+  </a>
+  <br>
+  <a href="docs/media/aws-ecommerce-data-lake-linkedin-1920x1080.mp4">Voir la vidéo du projet</a> (en anglais)
+</p>
+
 Une étude de cas Cloud Data Engineering sur AWS. Deux sources déconnectées, un export de commandes ERP et un catalogue applicatif, sont déposées dans S3, nettoyées et réconciliées selon une architecture médaillon bronze → silver → gold, modélisées en schéma en étoile, interrogées avec Athena et contrôlées par des tests automatisés. L’ensemble de l’environnement est provisionné avec Terraform et supprimé en une seule commande.
 
 **AWS · Terraform · Amazon S3 · AWS Glue Data Catalog · Amazon Athena · SQL · Python · pytest · Ruff · uv · Taskfile · GitHub Actions**

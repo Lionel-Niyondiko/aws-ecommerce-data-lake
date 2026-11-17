@@ -2,6 +2,14 @@
 
 **English** · [Français](README.fr.md)
 
+<p align="center">
+  <a href="docs/media/aws-ecommerce-data-lake-linkedin-1920x1080.mp4">
+    <img src="docs/media/aws-ecommerce-data-lake-cover-1920x1080.png" alt="Project video: from raw sources to a reliable analytical model" width="720">
+  </a>
+  <br>
+  <a href="docs/media/aws-ecommerce-data-lake-linkedin-1920x1080.mp4">Watch the project video</a>
+</p>
+
 An AWS Cloud Data Engineering case study. Two disconnected sources, an ERP order export and an application catalog, are landed in S3, cleaned and reconciled through a bronze → silver → gold medallion architecture, modelled as a star schema, queried with Athena, and checked by automated tests. The whole environment is provisioned with Terraform and removed with one command.
 
 **AWS · Terraform · Amazon S3 · AWS Glue Data Catalog · Amazon Athena · SQL · Python · pytest · Ruff · uv · Taskfile · GitHub Actions**
