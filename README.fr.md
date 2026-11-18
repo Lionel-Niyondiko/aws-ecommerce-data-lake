@@ -174,6 +174,10 @@ Une exécution complète se chiffre en centimes à ce volume (quelques Mo dans S
 
 ## Rapport analytique
 
+<p align="center">
+  <img src="docs/media/aws-ecommerce-data-lake-report-scroll.gif" alt="Le rapport analytique généré, défilé de la vue d’ensemble jusqu’à la section sur les clés orphelines" width="800">
+</p>
+
 `task analytics` et `task analytics-view` ont des rôles différents.
 
 | Commande | Appelle AWS | Rôle |
