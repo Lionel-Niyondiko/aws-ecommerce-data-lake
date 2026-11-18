@@ -174,6 +174,10 @@ A full run stays in the cents at this data volume (a few MB in S3, well under 1 
 
 ## Analytics report
 
+<p align="center">
+  <img src="docs/media/aws-ecommerce-data-lake-report-scroll.gif" alt="The generated analytics report, scrolled from the executive overview to the orphan-key section" width="800">
+</p>
+
 `task analytics` and `task analytics-view` do different things.
 
 | Command | Calls AWS | What it does |
